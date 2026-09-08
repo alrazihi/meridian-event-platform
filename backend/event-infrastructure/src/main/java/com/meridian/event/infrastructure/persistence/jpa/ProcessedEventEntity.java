@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "processed_events")
+@Table(name = "processed_events", uniqueConstraints = @UniqueConstraint(name = "uk_processed_event_customer", columnNames = {"event_id", "customer_id"}))
 public class ProcessedEventEntity {
 
     @Id

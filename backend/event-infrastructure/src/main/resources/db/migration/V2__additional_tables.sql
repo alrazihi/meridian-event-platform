@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS order_projections (
 
 ALTER TABLE outbox_events 
     ADD COLUMN IF NOT EXISTS retry_count INTEGER NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS last_error TEXT;
+    ADD COLUMN IF NOT EXISTS last_error TEXT,
+    ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_outbox_events_unsent ON outbox_events (sent_at) WHERE sent_at IS NULL;

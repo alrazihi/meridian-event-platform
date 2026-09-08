@@ -19,6 +19,7 @@ public class PaymentMapper {
         entity.setStatus(payment.getStatus().name());
         entity.setCreatedAt(payment.getCreatedAt());
         entity.setUpdatedAt(payment.getUpdatedAt());
+        entity.setVersion(payment.getVersion());
         return entity;
     }
 
@@ -32,7 +33,7 @@ public class PaymentMapper {
 
         payment.setAmount(Money.of(entity.getAmount(), "USD"));
         payment.setStatus(com.meridian.event.domain.model.PaymentStatus.valueOf(entity.getStatus()));
-        payment.setVersion(0L);
+        payment.setVersion(entity.getVersion());
         payment.setCreatedAt(entity.getCreatedAt());
         payment.setUpdatedAt(entity.getUpdatedAt());
         return payment;
