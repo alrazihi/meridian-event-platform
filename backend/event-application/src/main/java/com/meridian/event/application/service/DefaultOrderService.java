@@ -3,6 +3,7 @@ package com.meridian.event.application.service;
 import com.meridian.event.application.port.inbound.OrderLineInput;
 import com.meridian.event.application.port.inbound.PlaceOrderUseCase;
 import com.meridian.event.application.port.inbound.ProcessPaymentUseCase;
+import com.meridian.event.application.port.inbound.QueryOrderStatusUseCase;
 import com.meridian.event.application.port.inbound.ReserveInventoryUseCase;
 import com.meridian.event.application.port.outbound.EventPublisher;
 import com.meridian.event.application.port.outbound.NotificationService;
@@ -19,9 +20,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
-public class DefaultOrderService implements PlaceOrderUseCase {
+public class DefaultOrderService implements PlaceOrderUseCase, QueryOrderStatusUseCase {
 
     private final OrderRepository orderRepository;
     private final EventPublisher eventPublisher;
@@ -70,7 +72,16 @@ public class DefaultOrderService implements PlaceOrderUseCase {
         );
         eventPublisher.publish(event);
 
+        notificationService.notifyOrderConfirmed(savedOrder.getId().value(), savedOrder.getCustomerId());
+
         return savedOrder;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Order getOrderStatus(String orderId) {
+        return orderRepository.findById(OrderId.from(orderId))
+                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
     }
 }
 

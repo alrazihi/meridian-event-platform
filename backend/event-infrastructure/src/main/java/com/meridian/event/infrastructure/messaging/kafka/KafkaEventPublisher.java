@@ -2,33 +2,46 @@ package com.meridian.event.infrastructure.messaging.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.meridian.event.domain.model.DomainEvent;
+import com.meridian.event.infrastructure.persistence.jpa.OutboxEventEntity;
+import com.meridian.event.infrastructure.persistence.repository.OutboxEventRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Component
 public class KafkaEventPublisher implements com.meridian.event.application.port.outbound.EventPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaEventPublisher.class);
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final OutboxEventRepository outboxRepository;
     private final ObjectMapper objectMapper;
 
-    public KafkaEventPublisher(KafkaTemplate<String, String> kafkaTemplate, ObjectMapper objectMapper) {
-        this.kafkaTemplate = kafkaTemplate;
+    public KafkaEventPublisher(OutboxEventRepository outboxRepository, ObjectMapper objectMapper) {
+        this.outboxRepository = outboxRepository;
         this.objectMapper = objectMapper;
     }
 
     @Override
+    @Transactional
     public void publish(DomainEvent event) {
         try {
             String key = event.getAggregateId();
             String value = objectMapper.writeValueAsString(event);
-            kafkaTemplate.send("order.events", key, value);
-            log.info("Published event {} for aggregate {}", event.getEventType(), event.getAggregateId());
+            
+            OutboxEventEntity outboxEvent = new OutboxEventEntity();
+            outboxEvent.setId(UUID.randomUUID().toString());
+            outboxEvent.setAggregateId(key);
+            outboxEvent.setEventType(event.getEventType());
+            outboxEvent.setPayload(value);
+            
+            outboxRepository.save(outboxEvent);
+            
+            log.debug("Persisted event {} for aggregate {} to outbox", event.getEventType(), key);
         } catch (Exception e) {
-            log.error("Failed to publish event for aggregate {}", event.getAggregateId(), e);
-            throw new RuntimeException("Failed to publish event", e);
+            log.error("Failed to persist event to outbox for aggregate {}", event.getAggregateId(), e);
+            throw new RuntimeException("Failed to persist event to outbox", e);
         }
     }
 }
