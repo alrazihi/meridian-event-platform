@@ -3,6 +3,7 @@ package com.meridian.event.infrastructure.web.rest;
 import com.meridian.event.application.port.inbound.PlaceOrderUseCase;
 import com.meridian.event.application.port.inbound.QueryOrderStatusUseCase;
 import com.meridian.event.application.port.inbound.OrderLineInput;
+import com.meridian.event.infrastructure.web.dto.PlaceOrderRequest;
 import com.meridian.event.infrastructure.web.dto.OrderResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
