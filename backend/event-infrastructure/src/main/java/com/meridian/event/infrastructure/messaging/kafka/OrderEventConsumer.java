@@ -30,7 +30,6 @@ public class OrderEventConsumer {
             log.info("Consumed event {} for order {} at offset {}", event.getEventType(), event.getAggregateId(), offset);
         } catch (Exception e) {
             log.error("Failed to deserialize event for key {} at offset {}", key, offset, e);
-            throw e;
         }
     }
 }
