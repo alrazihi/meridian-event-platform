@@ -1,5 +1,8 @@
 server:
   port: 8080
+  servlet:
+    max-http-header-size: 8KB
+    max-http-post-size: 1MB
 
 spring:
   application:
@@ -48,7 +51,7 @@ management:
         include: health,info
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
   metrics:
     export:
       prometheus:
