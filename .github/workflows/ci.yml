@@ -17,9 +17,9 @@ jobs:
           distribution: temurin
           java-version: 21
       - name: Run Spotless Check
-        run: mvn -B spotless:check -pl backend/event-domain,backend/event-application,backend/event-infrastructure,backend/event-service
+        run: cd backend && mvn -B spotless:check -pl event-domain,event-application,event-infrastructure,event-service
       - name: Run Checkstyle
-        run: mvn -B checkstyle:check -pl backend/event-domain,backend/event-application,backend/event-infrastructure,backend/event-service
+        run: cd backend && mvn -B checkstyle:check -pl event-domain,event-application,event-infrastructure,event-service
 
   unit-tests:
     runs-on: ubuntu-latest
@@ -31,7 +31,7 @@ jobs:
           java-version: 21
           cache: maven
       - name: Run Unit Tests
-        run: mvn -B test -pl backend/event-domain,backend/event-application
+        run: cd backend && mvn -B test -pl event-domain,event-application
       - name: Upload Coverage
         uses: codecov/codecov-action@v4
         with:
@@ -62,7 +62,7 @@ jobs:
           java-version: 21
           cache: maven
       - name: Run Integration Tests
-        run: mvn -B verify -pl backend/event-infrastructure,backend/event-service -DskipUnitTests
+        run: cd backend && mvn -B verify -pl event-infrastructure,event-service -DskipUnitTests
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/meridian
           SPRING_DATASOURCE_USERNAME: meridian
@@ -80,6 +80,7 @@ jobs:
           java-version: 21
           cache: maven
       - name: Build Backend
-        run: mvn -B package -DskipTests -pl backend/event-service -am
+        run: cd backend && mvn -B package -DskipTests -pl event-service -am
       - name: Build Docker Image
         run: docker build -t meridian-event-platform:${{ github.sha }} -f backend/event-service/Dockerfile .
+
