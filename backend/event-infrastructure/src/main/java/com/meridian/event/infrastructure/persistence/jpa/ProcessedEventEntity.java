@@ -17,6 +17,9 @@ public class ProcessedEventEntity {
     @Column(name = "event_type", nullable = false, length = 50)
     private String eventType;
 
+    @Column(name = "customer_id", length = 100)
+    private String customerId;
+
     @Column(name = "processed_at", nullable = false)
     private Instant processedAt;
 
@@ -31,6 +34,8 @@ public class ProcessedEventEntity {
     public void setAggregateId(String aggregateId) { this.aggregateId = aggregateId; }
     public String getEventType() { return eventType; }
     public void setEventType(String eventType) { this.eventType = eventType; }
+    public String getCustomerId() { return customerId; }
+    public void setCustomerId(String customerId) { this.customerId = customerId; }
     public Instant getProcessedAt() { return processedAt; }
     public void setProcessedAt(Instant processedAt) { this.processedAt = processedAt; }
 }

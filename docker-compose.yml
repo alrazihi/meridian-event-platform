@@ -8,11 +8,16 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-meridian}
       POSTGRES_USER: ${POSTGRES_USER:-meridian}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_SSL: "on"
+      POSTGRES_SSL_CERT_FILE: /etc/ssl/certs/server.crt
+      POSTGRES_SSL_KEY_FILE: /etc/ssl/private/server.key
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./deploy/kafka-connect:/kafka-connect
+      - ./deploy/postgres/ssl:/etc/ssl/certs:ro
+      - ./deploy/postgres/ssl:/etc/ssl/private:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-meridian}"]
       interval: 5s

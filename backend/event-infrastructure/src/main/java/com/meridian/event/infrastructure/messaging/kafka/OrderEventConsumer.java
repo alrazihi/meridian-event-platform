@@ -2,6 +2,7 @@ package com.meridian.event.infrastructure.messaging.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.meridian.event.domain.model.DomainEvent;
+import com.meridian.event.domain.model.OrderConfirmedEvent;
 import com.meridian.event.infrastructure.persistence.jpa.ProcessedEventEntity;
 import com.meridian.event.infrastructure.persistence.repository.ProcessedEventRepository;
 import com.meridian.event.infrastructure.projection.OrderProjectionHandler;
@@ -65,8 +66,11 @@ public class OrderEventConsumer {
         DomainEvent event = objectMapper.readValue(payload, DomainEvent.class);
         String eventId = event.getEventId();
 
-        if (processedEventRepository.existsByEventId(eventId)) {
-            log.debug("Duplicate event {} skipped", eventId);
+        // Extract customer ID for tenant isolation of idempotency keys
+        String customerId = extractCustomerId(event);
+
+        if (processedEventRepository.existsByEventIdAndCustomerId(eventId, customerId)) {
+            log.debug("Duplicate event {} for customer {} skipped", eventId, customerId);
             acknowledgment.acknowledge();
             return;
         }
@@ -78,6 +82,7 @@ public class OrderEventConsumer {
             processed.setEventId(eventId);
             processed.setAggregateId(event.getAggregateId());
             processed.setEventType(event.getEventType());
+            processed.setCustomerId(customerId);
             processed.setProcessedAt(Instant.now());
             processedEventRepository.save(processed);
             
@@ -86,6 +91,15 @@ public class OrderEventConsumer {
         });
         
         acknowledgment.acknowledge();
+    }
+
+    private String extractCustomerId(DomainEvent event) {
+        if (event instanceof OrderConfirmedEvent orderEvent) {
+            return orderEvent.getCustomerId();
+        }
+        // Fallback for other event types - use aggregate ID as customer ID
+        // In a real system, all events should carry customer/tenant context
+        return event.getAggregateId();
     }
 
     @Recover

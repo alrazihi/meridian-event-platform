@@ -8,10 +8,16 @@ spring:
   application:
     name: meridian-event-platform
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/meridian}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/meridian?sslmode=verify-full&sslcert=/etc/ssl/certs/client.crt&sslkey=/etc/ssl/private/client.key&sslrootcert=/etc/ssl/certs/ca.crt}
     username: ${SPRING_DATASOURCE_USERNAME:meridian}
     password: ${SPRING_DATASOURCE_PASSWORD:meridian}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
   jpa:
     hibernate:
       ddl-auto: none
