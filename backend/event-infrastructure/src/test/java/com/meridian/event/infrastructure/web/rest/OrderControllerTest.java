@@ -1,0 +1,147 @@
+package com.meridian.event.infrastructure.web.rest;
+
+import com.meridian.event.application.port.inbound.OrderLineInput;
+import com.meridian.event.application.port.inbound.PlaceOrderUseCase;
+import com.meridian.event.application.port.inbound.QueryOrderStatusUseCase;
+import com.meridian.event.infrastructure.web.dto.PlaceOrderRequest;
+import com.meridian.event.infrastructure.web.dto.OrderResponse;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.List;
+import java.util.Optional;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@ExtendWith(SpringExtension.class)
+@WebMvcTest(OrderController.class)
+class OrderControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private PlaceOrderUseCase placeOrderUseCase;
+
+    @MockBean
+    private QueryOrderStatusUseCase queryOrderStatusUseCase;
+
+    @Test
+    @WithMockUser(roles = "OPERATOR")
+    void shouldPlaceOrderSuccessfully() throws Exception {
+        OrderResponse response = new OrderResponse(
+                "order-123",
+                "customer-123",
+                new java.math.BigDecimal("45.00"),
+                "CREATED",
+                java.time.Instant.now()
+        );
+        when(placeOrderUseCase.placeOrder(anyString(), any())).thenReturn(
+                com.meridian.event.domain.model.OrderTest.createMockOrder()
+        );
+
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "customerId": "customer-123",
+                                    "lines": [
+                                        {"sku": "SKU-1", "quantity": 2, "unitPrice": 10.00},
+                                        {"sku": "SKU-2", "quantity": 1, "unitPrice": 25.00}
+                                    ]
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.orderId").exists())
+                .andExpect(jsonPath("$.customerId").value("customer-123"))
+                .andExpect(jsonPath("$.status").value("CREATED"));
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERATOR")
+    void shouldRejectOrderWithInvalidQuantity() throws Exception {
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "customerId": "customer-123",
+                                    "lines": [{"sku": "SKU-1", "quantity": 0, "unitPrice": 10.00}]
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERATOR")
+    void shouldRejectOrderWithMissingLines() throws Exception {
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "customerId": "customer-123",
+                                    "lines": []
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERATOR")
+    void shouldGetOrderSuccessfully() throws Exception {
+        OrderResponse response = new OrderResponse(
+                "order-123",
+                "customer-123",
+                new java.math.BigDecimal("100.00"),
+                "CONFIRMED",
+                java.time.Instant.now()
+        );
+        when(queryOrderStatusUseCase.getOrderStatus("order-123")).thenReturn(
+                com.meridian.event.domain.model.OrderTest.createMockOrder()
+        );
+
+        mockMvc.perform(get("/api/v1/orders/order-123"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderId").value("order-123"))
+                .andExpect(jsonPath("$.customerId").value("customer-123"))
+                .andExpect(jsonPath("$.status").value("CONFIRMED"));
+    }
+
+    @Test
+    @WithMockUser(roles = "REVIEWER")
+    void shouldAllowReviewerToGetOrder() throws Exception {
+        when(queryOrderStatusUseCase.getOrderStatus("order-123")).thenReturn(
+                com.meridian.event.domain.model.OrderTest.createMockOrder()
+        );
+
+        mockMvc.perform(get("/api/v1/orders/order-123"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldRejectUnauthenticatedRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/orders/order-123"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERATOR")
+    void shouldReturnNotFoundForNonExistentOrder() throws Exception {
+        when(queryOrderStatusUseCase.getOrderStatus("non-existent"))
+                .thenThrow(new IllegalArgumentException("Order not found: non-existent"));
+
+        mockMvc.perform(get("/api/v1/orders/non-existent"))
+                .andExpect(status().isNotFound());
+    }
+}

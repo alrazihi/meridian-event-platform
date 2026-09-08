@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Optional;
 
 @Component
 public class OrderProjectionHandler {
@@ -28,6 +29,10 @@ public class OrderProjectionHandler {
         if (event instanceof OrderConfirmedEvent confirmedEvent) {
             handleOrderConfirmed(confirmedEvent);
         }
+    }
+
+    public Optional<OrderProjectionEntity> getProjection(String orderId) {
+        return projectionRepository.findById(orderId);
     }
 
     private void handleOrderConfirmed(OrderConfirmedEvent event) {
