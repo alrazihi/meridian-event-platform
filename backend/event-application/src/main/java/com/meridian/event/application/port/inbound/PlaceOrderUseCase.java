@@ -1,8 +1,9 @@
 package com.meridian.event.application.port.inbound;
 
 import com.meridian.event.domain.model.Order;
-import com.meridian.event.domain.model.valueobjects.OrderId;
+
+import java.util.List;
 
 public interface PlaceOrderUseCase {
-    Order placeOrder(String customerId, java.util.List<OrderLineInput> lines);
+    Order placeOrder(String customerId, List<OrderLineInput> lines, String authenticatedCustomerId);
 }

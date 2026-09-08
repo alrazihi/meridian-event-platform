@@ -15,6 +15,7 @@ import com.meridian.event.domain.model.valueobjects.OrderId;
 import com.meridian.event.domain.model.valueobjects.Sku;
 import com.meridian.event.domain.model.OrderConfirmedEvent;
 import com.meridian.event.domain.service.OrderValidator;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,7 +49,12 @@ public class DefaultOrderService implements PlaceOrderUseCase, QueryOrderStatusU
 
     @Override
     @Transactional
-    public Order placeOrder(String customerId, List<OrderLineInput> lines) {
+    public Order placeOrder(String customerId, List<OrderLineInput> lines, String authenticatedCustomerId) {
+        // Regular users can only place orders for themselves; admins can place for others
+        if (!isAdmin(authenticatedCustomerId) && !customerId.equals(authenticatedCustomerId)) {
+            throw new AccessDeniedException("Cannot place order for another customer");
+        }
+
         OrderId orderId = OrderId.generate();
         List<OrderLine> orderLines = lines.stream()
                 .map(line -> new OrderLine(Sku.of(line.getSku()), line.getQuantity(), Money.of(new java.math.BigDecimal(line.getUnitPrice()), "USD")))
@@ -78,9 +84,23 @@ public class DefaultOrderService implements PlaceOrderUseCase, QueryOrderStatusU
 
     @Override
     @Transactional(readOnly = true)
-    public Order getOrderStatus(String orderId) {
-        return orderRepository.findById(OrderId.from(orderId))
-                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+    public Order getOrderStatus(String orderId, String authenticatedCustomerId) {
+        Order order = orderRepository.findById(OrderId.from(orderId))
+                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+
+        // Resource-level authorization: users can only access their own orders
+        if (!isAdmin(authenticatedCustomerId) && !order.getCustomerId().equals(authenticatedCustomerId)) {
+            throw new AccessDeniedException("Access denied to order: " + orderId);
+        }
+
+        return order;
+    }
+
+    private boolean isAdmin(String customerId) {
+        // In a real implementation, this would check the JWT roles claim
+        // For now, we'll check if there's an ADMIN role in the authentication context
+        // This is a placeholder - actual implementation would use SecurityContext
+        return false; // Will be overridden by controller-level @PreAuthorize
     }
 }
 

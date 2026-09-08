@@ -1,6 +1,7 @@
 package com.meridian.event.application.port.outbound;
 
 import com.meridian.event.domain.model.Payment;
+import com.meridian.event.domain.model.PaymentStatus;
 import com.meridian.event.domain.model.valueobjects.PaymentId;
 
 import java.util.Optional;
@@ -8,4 +9,5 @@ import java.util.Optional;
 public interface PaymentRepository {
     Payment save(Payment payment);
     Optional<Payment> findById(PaymentId id);
+    boolean existsByOrderIdAndStatus(String orderId, PaymentStatus status);
 }

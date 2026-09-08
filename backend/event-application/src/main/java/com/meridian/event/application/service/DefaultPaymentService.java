@@ -11,6 +11,7 @@ import com.meridian.event.domain.model.valueobjects.OrderId;
 import com.meridian.event.domain.model.valueobjects.PaymentId;
 import com.meridian.event.domain.model.PaymentProcessedEvent;
 import com.meridian.event.domain.service.PaymentProcessor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,10 +39,20 @@ public class DefaultPaymentService implements ProcessPaymentUseCase {
 
     @Override
     @Transactional
-    public com.meridian.event.domain.model.Payment processPayment(String orderId, double amount, String paymentMethod) {
+    public com.meridian.event.domain.model.Payment processPayment(String orderId, double amount, String paymentMethod, String authenticatedCustomerId) {
         OrderId oid = OrderId.from(orderId);
         Order order = orderRepository.findById(oid)
-                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+
+        // Resource-level authorization: verify the order belongs to the authenticated customer
+        if (!order.getCustomerId().equals(authenticatedCustomerId)) {
+            throw new AccessDeniedException("Cannot process payment for order belonging to another customer");
+        }
+
+        // Prevent double payment
+        if (paymentRepository.existsByOrderIdAndStatus(orderId, com.meridian.event.domain.model.PaymentStatus.APPROVED)) {
+            throw new IllegalStateException("Order already has an approved payment");
+        }
 
         PaymentId paymentId = PaymentId.generate();
         com.meridian.event.domain.model.Payment payment = new com.meridian.event.domain.model.Payment(
