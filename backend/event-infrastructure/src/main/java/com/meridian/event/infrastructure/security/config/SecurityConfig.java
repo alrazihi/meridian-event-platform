@@ -1,7 +1,12 @@
 package com.meridian.event.infrastructure.security.config;
 
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -18,10 +23,13 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.util.List;
+import java.util.UUID;
 
 @Configuration
 @EnableWebSecurity
@@ -58,7 +66,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("https://api.meridian.example.com")); // Configure for production
+        String allowedOrigins = System.getenv().getOrDefault("ALLOWED_ORIGINS", "https://api.meridian.example.com");
+        configuration.setAllowedOrigins(List.of(allowedOrigins.split(",")));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
         configuration.setExposedHeaders(List.of("X-Request-ID"));
@@ -71,22 +80,34 @@ public class SecurityConfig {
     }
 
     @Bean
+    @Profile("!dev & !test")
     public JwtDecoder jwtDecoder() {
         String jwkSetUri = System.getenv().getOrDefault("SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI", "");
         if (!jwkSetUri.isBlank()) {
             return NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
         }
-        String publicKeyPem = System.getenv().getOrDefault("JWT_PUBLIC_KEY", "");
-        if (publicKeyPem.isBlank()) {
-            // Fail fast in production; allow dev mode with a clear warning
-            String env = System.getenv().getOrDefault("SPRING_PROFILES_ACTIVE", "");
-            if (!env.contains("dev") && !env.contains("test")) {
-                throw new IllegalStateException("JWT_PUBLIC_KEY or JWK_SET_URI must be set in production");
-            }
-            // Dev mode: return a decoder that will reject all tokens (forces proper config)
-            return token -> { throw new IllegalStateException("JWT validation not configured for dev mode"); };
-        }
         return NimbusJwtDecoder.withPublicKey(rsaPublicKey()).build();
+    }
+
+    @Bean
+    @Profile("dev | test")
+    public JwtDecoder devJwtDecoder() {
+        // Dev/test mode: auto-generate a test key pair for local development
+        // This allows tests to work without manual key configuration
+        try {
+            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+            keyGen.initialize(2048);
+            KeyPair keyPair = keyGen.generateKeyPair();
+            
+            RSAKey rsaKey = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
+                    .keyID(UUID.randomUUID().toString())
+                    .build();
+            
+            JWKSet jwkSet = new JWKSet(rsaKey);
+            return NimbusJwtDecoder.withJWKSetSource(new ImmutableJWKSet<>(jwkSet)).build();
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to generate dev JWT key pair", e);
+        }
     }
 
     @Bean

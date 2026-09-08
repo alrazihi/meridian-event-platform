@@ -5,16 +5,16 @@ services:
     image: postgres:16-alpine
     container_name: meridian-postgres
     environment:
-      POSTGRES_DB: meridian
-      POSTGRES_USER: meridian
-      POSTGRES_PASSWORD: meridian
+      POSTGRES_DB: ${POSTGRES_DB:-meridian}
+      POSTGRES_USER: ${POSTGRES_USER:-meridian}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./deploy/kafka-connect:/kafka-connect
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U meridian"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-meridian}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -25,6 +25,9 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      KAFKA_OPTS: "-Dzookeeper.authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider -Dzookeeper.allowSaslFailedClients=false"
+    volumes:
+      - ./deploy/zookeeper/jaas.conf:/etc/kafka/zookeeper_jaas.conf
     healthcheck:
       test: ["CMD-SHELL", "echo ruok | nc localhost 2181"]
       interval: 10s
@@ -40,18 +43,23 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_HOST://localhost:9092,PLAINTEXT_INTERNAL://kafka:9093
-      KAFKA_LISTENERS: PLAINTEXT_HOST://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:9093
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SASL_PLAINTEXT_HOST:SASL_PLAINTEXT,SASL_PLAINTEXT_INTERNAL:SASL_PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: SASL_PLAINTEXT_HOST://localhost:9092,SASL_PLAINTEXT_INTERNAL://kafka:9093
+      KAFKA_LISTENERS: SASL_PLAINTEXT_HOST://0.0.0.0:9092,SASL_PLAINTEXT_INTERNAL://0.0.0.0:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: SASL_PLAINTEXT_INTERNAL
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/kafka_jaas.conf"
+    volumes:
+      - ./deploy/kafka/jaas.conf:/etc/kafka/kafka_jaas.conf
     ports:
       - "9092:9092"
     healthcheck:
-      test: ["CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
+      test: ["CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092 --command-config /etc/kafka/client.properties"]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -80,6 +88,9 @@ services:
       CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_OFFSET_FLUSH_INTERVAL_MS: 60000
       CONNECT_PLUGIN_PATH: /usr/share/java
+      CONNECT_SECURITY_PROTOCOL: SASL_PLAINTEXT
+      CONNECT_SASL_MECHANISM: PLAIN
+      CONNECT_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"connect\" password=\"${KAFKA_CONNECT_PASSWORD}\";"
     ports:
       - "8083:8083"
     volumes:
@@ -93,8 +104,11 @@ services:
         condition: service_healthy
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9093
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: SASL_PLAINTEXT://kafka:9093
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: SASL_PLAINTEXT
+      SCHEMA_REGISTRY_KAFKASTORE_SASL_MECHANISM: PLAIN
+      SCHEMA_REGISTRY_KAFKASTORE_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"schemaregistry\" password=\"${SCHEMA_REGISTRY_PASSWORD}\";"
     ports:
       - "8081:8081"
 
@@ -104,15 +118,19 @@ services:
       dockerfile: Dockerfile
     container_name: meridian-backend
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/meridian
-      SPRING_DATASOURCE_USERNAME: meridian
-      SPRING_DATASOURCE_PASSWORD: meridian
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-meridian}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-meridian}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9093
       SPRING_KAFKA_CONSUMER_GROUP_ID: event-platform-service
       SPRING_KAFKA_PRODUCER_TRANSACTION_ID_PREFIX: event-platform-tx
+      SPRING_KAFKA_SECURITY_PROTOCOL: SASL_PLAINTEXT
+      SPRING_KAFKA_SASL_MECHANISM: PLAIN
+      SPRING_KAFKA_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"${KAFKA_CLIENT_USERNAME}\" password=\"${KAFKA_CLIENT_PASSWORD}\";"
       # JWT_PUBLIC_KEY: Must be set in production (base64-encoded PEM)
       # SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: Alternative to JWT_PUBLIC_KEY
       SPRING_PROFILES_ACTIVE: dev
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8080}
     ports:
       - "8080:8080"
     depends_on:
@@ -134,8 +152,11 @@ services:
         condition: service_healthy
     environment:
       KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: SASL_PLAINTEXT://kafka:9093
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: SASL_PLAINTEXT
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM: PLAIN
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"${KAFKA_UI_USERNAME}\" password=\"${KAFKA_UI_PASSWORD}\";"
     ports:
       - "9000:8080"
 

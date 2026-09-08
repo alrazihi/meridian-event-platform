@@ -12,6 +12,8 @@ import com.meridian.event.domain.model.valueobjects.PaymentId;
 import com.meridian.event.domain.model.PaymentProcessedEvent;
 import com.meridian.event.domain.service.PaymentProcessor;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,7 +47,8 @@ public class DefaultPaymentService implements ProcessPaymentUseCase {
                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
 
         // Resource-level authorization: verify the order belongs to the authenticated customer
-        if (!order.getCustomerId().equals(authenticatedCustomerId)) {
+        // Admins can process payments for any order
+        if (!isAdmin() && !order.getCustomerId().equals(authenticatedCustomerId)) {
             throw new AccessDeniedException("Cannot process payment for order belonging to another customer");
         }
 
@@ -78,6 +81,15 @@ public class DefaultPaymentService implements ProcessPaymentUseCase {
         eventPublisher.publish(event);
 
         return savedPayment;
+    }
+
+    private boolean isAdmin() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null) {
+            return authentication.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        }
+        return false;
     }
 }
 

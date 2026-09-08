@@ -5,9 +5,9 @@ spring:
   application:
     name: meridian-event-platform
   datasource:
-    url: jdbc:postgresql://localhost:5432/meridian
-    username: meridian
-    password: meridian
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/meridian}
+    username: ${SPRING_DATASOURCE_USERNAME:meridian}
+    password: ${SPRING_DATASOURCE_PASSWORD:meridian}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -22,15 +22,20 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    security:
+      protocol: ${SPRING_KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+    sasl:
+      mechanism: ${SPRING_KAFKA_SASL_MECHANISM:PLAIN}
+      jaas-config: ${SPRING_KAFKA_SASL_JAAS_CONFIG:}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       acks: all
       retries: 3
-      transaction-id-prefix: event-platform-tx
+      transaction-id-prefix: ${SPRING_KAFKA_PRODUCER_TRANSACTION_ID_PREFIX:event-platform-tx}
     consumer:
-      group-id: event-platform-service
+      group-id: ${SPRING_KAFKA_CONSUMER_GROUP_ID:event-platform-service}
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -40,7 +45,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info
   endpoint:
     health:
       show-details: always

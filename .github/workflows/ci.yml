@@ -44,9 +44,9 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: meridian
-          POSTGRES_USER: meridian
-          POSTGRES_PASSWORD: meridian
+          POSTGRES_DB: ${POSTGRES_DB:-meridian}
+          POSTGRES_USER: ${POSTGRES_USER:-meridian}
+          POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-meridian}
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -64,9 +64,9 @@ jobs:
       - name: Run Integration Tests
         run: cd backend && mvn -B verify -pl event-infrastructure,event-service -am -DskipUnitTests
         env:
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/meridian
-          SPRING_DATASOURCE_USERNAME: meridian
-          SPRING_DATASOURCE_PASSWORD: meridian
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/${POSTGRES_DB:-meridian}
+          SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-meridian}
+          SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-meridian}
 
   build:
     needs: [lint-and-format, unit-tests, integration-tests]

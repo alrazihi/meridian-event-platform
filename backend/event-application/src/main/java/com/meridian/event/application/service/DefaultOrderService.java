@@ -16,6 +16,8 @@ import com.meridian.event.domain.model.valueobjects.Sku;
 import com.meridian.event.domain.model.OrderConfirmedEvent;
 import com.meridian.event.domain.service.OrderValidator;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,7 +53,7 @@ public class DefaultOrderService implements PlaceOrderUseCase, QueryOrderStatusU
     @Transactional
     public Order placeOrder(String customerId, List<OrderLineInput> lines, String authenticatedCustomerId) {
         // Regular users can only place orders for themselves; admins can place for others
-        if (!isAdmin(authenticatedCustomerId) && !customerId.equals(authenticatedCustomerId)) {
+        if (!isAdmin() && !customerId.equals(authenticatedCustomerId)) {
             throw new AccessDeniedException("Cannot place order for another customer");
         }
 
@@ -89,18 +91,20 @@ public class DefaultOrderService implements PlaceOrderUseCase, QueryOrderStatusU
                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
 
         // Resource-level authorization: users can only access their own orders
-        if (!isAdmin(authenticatedCustomerId) && !order.getCustomerId().equals(authenticatedCustomerId)) {
+        if (!isAdmin() && !order.getCustomerId().equals(authenticatedCustomerId)) {
             throw new AccessDeniedException("Access denied to order: " + orderId);
         }
 
         return order;
     }
 
-    private boolean isAdmin(String customerId) {
-        // In a real implementation, this would check the JWT roles claim
-        // For now, we'll check if there's an ADMIN role in the authentication context
-        // This is a placeholder - actual implementation would use SecurityContext
-        return false; // Will be overridden by controller-level @PreAuthorize
+    private boolean isAdmin() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null) {
+            return authentication.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        }
+        return false;
     }
 }
 
