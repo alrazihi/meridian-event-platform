@@ -24,6 +24,9 @@ public class PaymentEntity {
     @Column(name = "status", nullable = false, length = 20)
     private String status;
 
+    @Column(name = "transaction_id", length = 100)
+    private String transactionId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -55,6 +58,8 @@ public class PaymentEntity {
     public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getTransactionId() { return transactionId; }
+    public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

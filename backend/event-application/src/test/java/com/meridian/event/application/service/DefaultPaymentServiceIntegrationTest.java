@@ -3,6 +3,7 @@ package com.meridian.event.application.service;
 import com.meridian.event.application.port.inbound.ProcessPaymentUseCase;
 import com.meridian.event.application.port.outbound.PaymentRepository;
 import com.meridian.event.domain.model.Payment;
+import com.meridian.event.domain.model.PaymentStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,6 +12,8 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -25,6 +28,9 @@ class DefaultPaymentServiceIntegrationTest {
     private ProcessPaymentUseCase processPaymentUseCase;
 
     @Autowired
+    private DefaultPaymentService paymentService;
+
+    @Autowired
     private PaymentRepository paymentRepository;
 
     @Autowired
@@ -34,22 +40,33 @@ class DefaultPaymentServiceIntegrationTest {
     private com.meridian.event.application.port.inbound.OrderLineInput;
 
     @Test
-    void shouldProcessPaymentSuccessfully() {
-        // First place an order
+    void shouldInitiatePaymentAndReturnPending() {
         Order order = placeOrderUseCase.placeOrder("customer-123", List.of(new OrderLineInput("SKU-1", 1, 100.00)));
 
-        // Process payment
         Payment payment = processPaymentUseCase.processPayment(order.getId().value(), 100.00, "CREDIT_CARD");
 
         assertThat(payment.getId()).isNotNull();
         assertThat(payment.getOrderId()).isEqualTo(order.getId().value());
         assertThat(payment.getAmount().value()).isEqualByComparingTo("100.00");
         assertThat(payment.getPaymentMethod()).isEqualTo("CREDIT_CARD");
-        assertThat(payment.getStatus()).isEqualTo(com.meridian.event.domain.model.PaymentStatus.APPROVED);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
+    }
 
-        // Verify persistence
-        Payment persisted = paymentRepository.findById(payment.getId()).orElseThrow();
-        assertThat(persisted.getStatus()).isEqualTo(com.meridian.event.domain.model.PaymentStatus.APPROVED);
+    @Test
+    void shouldCompletePaymentAsync() throws Exception {
+        Order order = placeOrderUseCase.placeOrder("customer-123", List.of(new OrderLineInput("SKU-1", 1, 100.00)));
+
+        Payment pendingPayment = processPaymentUseCase.processPayment(order.getId().value(), 100.00, "CREDIT_CARD");
+        assertThat(pendingPayment.getStatus()).isEqualTo(PaymentStatus.PENDING);
+
+        CompletableFuture<Void> future = paymentService.processPaymentAsync(
+                order.getId().value(), 100.00, "CREDIT_CARD", "customer-123");
+
+        future.join();
+
+        Payment completed = paymentRepository.findById(pendingPayment.getId()).orElseThrow();
+        assertThat(completed.getStatus()).isEqualTo(PaymentStatus.APPROVED);
+        assertThat(completed.getTransactionId()).isNotNull();
     }
 
     @Test

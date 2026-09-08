@@ -13,6 +13,7 @@ public class Payment {
     private Money amount;
     private PaymentStatus status;
     private String paymentMethod;
+    private String transactionId;
     private final Instant createdAt;
     private Instant updatedAt;
     private long version;
@@ -51,9 +52,11 @@ public class Payment {
     public Money getAmount() { return amount; }
     public PaymentStatus getStatus() { return status; }
     public String getPaymentMethod() { return paymentMethod; }
+    public String getTransactionId() { return transactionId; }
+    public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
-public long getVersion() { return version; }
+    public long getVersion() { return version; }
 
     // Package-private setters for persistence reconstruction
     void setAmount(Money amount) { this.amount = amount; }

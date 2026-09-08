@@ -92,8 +92,8 @@ class TestConfig {
     }
 
     @Bean
-    public com.meridian.event.domain.service.PaymentProcessor paymentProcessor() {
-        return new com.meridian.event.domain.service.PaymentProcessor();
+    public com.meridian.event.application.port.outbound.PaymentGateway paymentGateway() {
+        return new com.meridian.event.infrastructure.payment.MockPaymentGateway();
     }
 
     @Bean

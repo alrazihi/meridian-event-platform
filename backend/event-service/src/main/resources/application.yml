@@ -49,6 +49,9 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       enable-auto-commit: false
+      # Concurrency: single-threaded per partition for exactly-once processing
+      # Increase only if adding more partitions to topics
+      concurrency: 1
 
 management:
   endpoints:
