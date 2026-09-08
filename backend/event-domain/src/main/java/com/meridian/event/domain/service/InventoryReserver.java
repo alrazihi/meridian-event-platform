@@ -25,14 +25,14 @@ public class InventoryReserver {
 
         try {
             item.reserve(quantity);
-            return ReservationResult.success();
+            return ReservationResult.successResult();
         } catch (DomainException e) {
             return ReservationResult.failed(e.getMessage());
         }
     }
 
     public record ReservationResult(boolean success, String errorMessage) {
-        public static ReservationResult success() {
+        public static ReservationResult successResult() {
             return new ReservationResult(true, null);
         }
 
@@ -41,3 +41,4 @@ public class InventoryReserver {
         }
     }
 }
+

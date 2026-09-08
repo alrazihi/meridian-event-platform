@@ -1,5 +1,6 @@
 package com.meridian.event.domain.model;
 
+import com.meridian.event.domain.exception.DomainException;
 import com.meridian.event.domain.model.valueobjects.Money;
 import com.meridian.event.domain.model.valueobjects.Sku;
 
@@ -27,3 +28,4 @@ public class OrderLine {
     public int getQuantity() { return quantity; }
     public Money getUnitPrice() { return unitPrice; }
 }
+

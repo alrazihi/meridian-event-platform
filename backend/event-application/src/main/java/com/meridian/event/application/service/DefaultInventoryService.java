@@ -6,6 +6,7 @@ import com.meridian.event.application.port.outbound.OrderRepository;
 import com.meridian.event.domain.model.DomainEvent;
 import com.meridian.event.domain.model.InventoryItem;
 import com.meridian.event.domain.model.valueobjects.Sku;
+import com.meridian.event.domain.model.InventoryReservedEvent;
 import com.meridian.event.domain.service.InventoryReserver;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,8 +40,7 @@ public class DefaultInventoryService implements ReserveInventoryUseCase {
             throw new IllegalStateException(result.errorMessage());
         }
 
-        InventoryReservedEvent event = new InventoryReservedEvent(
-                sku,
+        InventoryReservedEvent event = new InventoryReservedEvent(skuObj,
                 quantity,
                 sku
         );
@@ -49,3 +49,6 @@ public class DefaultInventoryService implements ReserveInventoryUseCase {
         return inventory.get(skuObj);
     }
 }
+
+
+

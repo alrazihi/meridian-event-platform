@@ -12,6 +12,8 @@ import com.meridian.event.domain.model.OrderLine;
 import com.meridian.event.domain.model.valueobjects.Money;
 import com.meridian.event.domain.model.valueobjects.OrderId;
 import com.meridian.event.domain.model.valueobjects.Sku;
+import com.meridian.event.domain.model.OrderConfirmedEvent;
+import com.meridian.event.domain.model.PaymentProcessedEvent;
 import com.meridian.event.domain.service.OrderValidator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,7 +56,7 @@ public class DefaultOrderService implements PlaceOrderUseCase {
         Order order = new Order(orderId, customerId, orderLines);
 
         OrderValidator.ValidationResult validationResult = orderValidator.validate(order);
-        if (!validationResult.valid()) {
+        if (!validationResult.isValid()) {
             throw new IllegalArgumentException(validationResult.errorMessage());
         }
 
@@ -71,3 +73,4 @@ public class DefaultOrderService implements PlaceOrderUseCase {
         return savedOrder;
     }
 }
+

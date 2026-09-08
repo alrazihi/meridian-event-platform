@@ -14,28 +14,30 @@ public class OrderValidator {
         Objects.requireNonNull(order, "order cannot be null");
 
         if (order.getLines().isEmpty()) {
-            return ValidationResult.invalid("Order must contain at least one line item");
+            return ValidationResult.invalidResult("Order must contain at least one line item");
         }
 
         for (OrderLine line : order.getLines()) {
             if (line.getQuantity() <= 0) {
-                return ValidationResult.invalid("Invalid quantity for SKU: " + line.getSku().value());
+                return ValidationResult.invalidResult("Invalid quantity for SKU: " + line.getSku().value());
             }
             if (line.getUnitPrice().value().compareTo(Money.zero().value()) < 0) {
-                return ValidationResult.invalid("Unit price cannot be negative for SKU: " + line.getSku().value());
+                return ValidationResult.invalidResult("Unit price cannot be negative for SKU: " + line.getSku().value());
             }
         }
 
-        return ValidationResult.valid();
+        return ValidationResult.validResult();
     }
 
-    public record ValidationResult(boolean valid, String errorMessage) {
-        public static ValidationResult valid() {
+    public record ValidationResult(boolean isValid, String errorMessage) {
+        public static ValidationResult validResult() {
             return new ValidationResult(true, null);
         }
 
-        public static ValidationResult invalid(String errorMessage) {
+        public static ValidationResult invalidResult(String errorMessage) {
             return new ValidationResult(false, errorMessage);
         }
     }
 }
+
+

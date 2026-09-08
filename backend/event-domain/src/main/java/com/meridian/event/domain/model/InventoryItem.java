@@ -1,5 +1,6 @@
 package com.meridian.event.domain.model;
 
+import com.meridian.event.domain.exception.DomainException;
 import com.meridian.event.domain.model.valueobjects.Sku;
 
 import java.time.Instant;
@@ -55,3 +56,4 @@ public class InventoryItem {
     public Instant getUpdatedAt() { return updatedAt; }
     public long getVersion() { return version; }
 }
+

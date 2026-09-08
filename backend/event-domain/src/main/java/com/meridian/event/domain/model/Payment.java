@@ -1,5 +1,6 @@
 package com.meridian.event.domain.model;
 
+import com.meridian.event.domain.exception.DomainException;
 import com.meridian.event.domain.model.valueobjects.Money;
 import com.meridian.event.domain.model.valueobjects.PaymentId;
 
@@ -54,3 +55,4 @@ public class Payment {
     public Instant getUpdatedAt() { return updatedAt; }
     public long getVersion() { return version; }
 }
+

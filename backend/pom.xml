@@ -35,6 +35,26 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
+                <groupId>com.meridian</groupId>
+                <artifactId>event-domain</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.meridian</groupId>
+                <artifactId>event-application</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.meridian</groupId>
+                <artifactId>event-infrastructure</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.meridian</groupId>
+                <artifactId>event-service</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
                 <version>${spring-boot.version}</version>
@@ -84,3 +104,8 @@
         </plugins>
     </build>
 </project>
+
+
+
+
+

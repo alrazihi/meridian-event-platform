@@ -20,11 +20,11 @@ public class PaymentProcessor {
             return ProcessingResult.failed("Payment amount must be positive");
         }
 
-        return ProcessingResult.success();
+        return ProcessingResult.successResult();
     }
 
     public record ProcessingResult(boolean success, String errorMessage) {
-        public static ProcessingResult success() {
+        public static ProcessingResult successResult() {
             return new ProcessingResult(true, null);
         }
 
@@ -33,3 +33,4 @@ public class PaymentProcessor {
         }
     }
 }
+

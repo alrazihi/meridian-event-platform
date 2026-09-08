@@ -11,6 +11,7 @@ import com.meridian.event.domain.model.valueobjects.Money;
 import com.meridian.event.domain.model.valueobjects.OrderId;
 import com.meridian.event.domain.model.valueobjects.PaymentId;
 import com.meridian.event.domain.model.valueobjects.Sku;
+import com.meridian.event.domain.model.PaymentProcessedEvent;
 import com.meridian.event.domain.service.PaymentProcessor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,3 +66,5 @@ public class DefaultPaymentService implements ProcessPaymentUseCase {
         return payment;
     }
 }
+
+
