@@ -8,5 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface InventoryItemJpaRepository extends JpaRepository<InventoryItemEntity, String> {
-    Optional<InventoryItemEntity> findBySku(String sku);
+    Optional<InventoryItemEntity> findById(String sku);
 }

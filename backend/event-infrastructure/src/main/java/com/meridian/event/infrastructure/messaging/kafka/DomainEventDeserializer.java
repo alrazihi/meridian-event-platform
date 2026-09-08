@@ -30,7 +30,7 @@ public class DomainEventDeserializer extends StdDeserializer<DomainEvent> {
                 ? node.get("causationId").asText() : null;
         Instant occurredAt = Instant.parse(node.get("occurredAt").asText());
 
-        return switch (eventType) {
+        DomainEvent event = switch (eventType) {
             case "ORDER_CONFIRMED" -> new OrderConfirmedEvent(
                     aggregateId,
                     node.get("customerId").asText(),
@@ -51,5 +51,10 @@ public class DomainEventDeserializer extends StdDeserializer<DomainEvent> {
             );
             default -> throw new IllegalArgumentException("Unknown event type: " + eventType);
         };
+
+        // Set the original eventId and occurredAt for idempotency
+        event.setEventId(eventId);
+        event.setOccurredAt(occurredAt);
+        return event;
     }
 }

@@ -11,7 +11,10 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
+import java.security.KeyFactory;
 import java.security.interfaces.RSAPublicKey;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 
 @Configuration
 @EnableWebSecurity
@@ -51,9 +54,18 @@ public class SecurityConfig {
         if (publicKeyPem.isBlank()) {
             throw new IllegalStateException("JWT_PUBLIC_KEY environment variable not set");
         }
-        // In production, parse the PEM string to RSAPublicKey
-        // For now, return a placeholder - actual implementation would use a proper key parser
-        throw new UnsupportedOperationException("RSA public key parsing not implemented - set JWK Set URI for production");
+        try {
+            String publicKeyPEM = publicKeyPem
+                    .replace("-----BEGIN PUBLIC KEY-----", "")
+                    .replace("-----END PUBLIC KEY-----", "")
+                    .replaceAll("\\s", "");
+            byte[] decoded = Base64.getDecoder().decode(publicKeyPEM);
+            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decoded);
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            return (RSAPublicKey) keyFactory.generatePublic(keySpec);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to parse JWT_PUBLIC_KEY", e);
+        }
     }
 
     @Bean

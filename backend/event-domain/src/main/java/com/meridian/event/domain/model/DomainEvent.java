@@ -4,10 +4,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 public abstract class DomainEvent {
-    private final String eventId;
+    private String eventId;
     private final String aggregateId;
     private final String eventType;
-    private final Instant occurredAt;
+    private Instant occurredAt;
     private final String correlationId;
     private final String causationId;
 
@@ -20,10 +20,23 @@ public abstract class DomainEvent {
         this.causationId = causationId;
     }
 
+    protected DomainEvent(String eventId, String aggregateId, String eventType, Instant occurredAt, String correlationId, String causationId) {
+        this.eventId = eventId;
+        this.aggregateId = aggregateId;
+        this.eventType = eventType;
+        this.occurredAt = occurredAt;
+        this.correlationId = correlationId;
+        this.causationId = causationId;
+    }
+
     public String getEventId() { return eventId; }
     public String getAggregateId() { return aggregateId; }
     public String getEventType() { return eventType; }
     public Instant getOccurredAt() { return occurredAt; }
     public String getCorrelationId() { return correlationId; }
     public String getCausationId() { return causationId; }
+
+    // Package-private setters for deserialization
+    void setEventId(String eventId) { this.eventId = eventId; }
+    void setOccurredAt(Instant occurredAt) { this.occurredAt = occurredAt; }
 }

@@ -5,6 +5,7 @@ import com.meridian.event.infrastructure.persistence.jpa.OutboxEventEntity;
 import com.meridian.event.infrastructure.persistence.repository.OutboxEventRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -34,7 +35,7 @@ public class OutboxEventPublisher {
     @Scheduled(fixedDelay = 1000)
     @Transactional
     public void publishPendingEvents() {
-        List<OutboxEventEntity> events = outboxRepository.findUnsentEvents(BATCH_SIZE);
+        List<OutboxEventEntity> events = outboxRepository.findUnsentEvents(PageRequest.of(0, BATCH_SIZE));
         if (events.isEmpty()) {
             return;
         }

@@ -17,10 +17,9 @@ import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
-import java.util.UUID;
 
 @Component
 public class OrderEventConsumer {
@@ -33,15 +32,18 @@ public class OrderEventConsumer {
     private final ProcessedEventRepository processedEventRepository;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final OrderProjectionHandler projectionHandler;
+    private final TransactionTemplate transactionTemplate;
 
     public OrderEventConsumer(ObjectMapper objectMapper,
                                ProcessedEventRepository processedEventRepository,
                                KafkaTemplate<String, String> kafkaTemplate,
-                               OrderProjectionHandler projectionHandler) {
+                               OrderProjectionHandler projectionHandler,
+                               TransactionTemplate transactionTemplate) {
         this.objectMapper = objectMapper;
         this.processedEventRepository = processedEventRepository;
         this.kafkaTemplate = kafkaTemplate;
         this.projectionHandler = projectionHandler;
+        this.transactionTemplate = transactionTemplate;
         
         objectMapper.registerModule(new com.fasterxml.jackson.databind.module.SimpleModule()
                 .addDeserializer(DomainEvent.class, new DomainEventDeserializer()));
@@ -53,7 +55,6 @@ public class OrderEventConsumer {
         maxAttempts = MAX_RETRIES,
         backoff = @Backoff(delay = 1000, multiplier = 2)
     )
-    @Transactional
     public void consumeOrderEvent(
             @Payload String payload,
             @Header(KafkaHeaders.RECEIVED_KEY) String key,
@@ -70,7 +71,7 @@ public class OrderEventConsumer {
             return;
         }
 
-        try {
+        transactionTemplate.execute(status -> {
             projectionHandler.handle(event);
             
             ProcessedEventEntity processed = new ProcessedEventEntity();
@@ -81,16 +82,13 @@ public class OrderEventConsumer {
             processedEventRepository.save(processed);
             
             log.info("Processed event {} for order {} at offset {}", event.getEventType(), event.getAggregateId(), offset);
-            acknowledgment.acknowledge();
-        } catch (Exception e) {
-            log.error("Failed to process event {} for key {} at offset {}: {}", 
-                    eventId, key, offset, e.getMessage());
-            throw e;
-        }
+            return null;
+        });
+        
+        acknowledgment.acknowledge();
     }
 
     @Recover
-    @Transactional
     public void recover(Exception ex, String payload, String key, long offset, Long timestamp, Acknowledgment acknowledgment) {
         log.error("Max retries exhausted for event at offset {}, sending to DLQ", offset, ex);
         

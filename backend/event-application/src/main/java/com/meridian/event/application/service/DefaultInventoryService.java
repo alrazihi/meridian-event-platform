@@ -6,7 +6,6 @@ import com.meridian.event.application.port.outbound.InventoryItemRepository;
 import com.meridian.event.domain.model.InventoryItem;
 import com.meridian.event.domain.model.valueobjects.Sku;
 import com.meridian.event.domain.model.InventoryReservedEvent;
-import com.meridian.event.domain.service.InventoryReserver;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,15 +16,12 @@ public class DefaultInventoryService implements ReserveInventoryUseCase {
 
     private final InventoryItemRepository inventoryRepository;
     private final EventPublisher eventPublisher;
-    private final InventoryReserver inventoryReserver;
 
     public DefaultInventoryService(
             InventoryItemRepository inventoryRepository,
-            EventPublisher eventPublisher,
-            InventoryReserver inventoryReserver) {
+            EventPublisher eventPublisher) {
         this.inventoryRepository = inventoryRepository;
         this.eventPublisher = eventPublisher;
-        this.inventoryReserver = inventoryReserver;
     }
 
     @Override

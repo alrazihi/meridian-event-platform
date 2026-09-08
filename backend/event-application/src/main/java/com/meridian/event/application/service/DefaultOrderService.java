@@ -14,7 +14,6 @@ import com.meridian.event.domain.model.valueobjects.Money;
 import com.meridian.event.domain.model.valueobjects.OrderId;
 import com.meridian.event.domain.model.valueobjects.Sku;
 import com.meridian.event.domain.model.OrderConfirmedEvent;
-import com.meridian.event.domain.model.PaymentProcessedEvent;
 import com.meridian.event.domain.service.OrderValidator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

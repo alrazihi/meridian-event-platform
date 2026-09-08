@@ -31,7 +31,7 @@ public class OrderProjectionHandler {
     }
 
     private void handleOrderConfirmed(OrderConfirmedEvent event) {
-        OrderProjectionEntity projection = projectionRepository.findByOrderId(event.getAggregateId())
+        OrderProjectionEntity projection = projectionRepository.findById(event.getAggregateId())
                 .orElseGet(() -> {
                     OrderProjectionEntity newProjection = new OrderProjectionEntity();
                     newProjection.setOrderId(event.getAggregateId());

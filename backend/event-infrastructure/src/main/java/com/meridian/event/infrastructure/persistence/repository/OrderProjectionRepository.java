@@ -8,5 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface OrderProjectionRepository extends JpaRepository<OrderProjectionEntity, String> {
-    Optional<OrderProjectionEntity> findByOrderId(String orderId);
+    Optional<OrderProjectionEntity> findById(String orderId);
 }

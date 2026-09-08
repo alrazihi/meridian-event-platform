@@ -1,16 +1,14 @@
 package com.meridian.event.application.service;
 
 import com.meridian.event.application.port.inbound.ProcessPaymentUseCase;
-import com.meridian.event.application.port.inbound.ReserveInventoryUseCase;
 import com.meridian.event.application.port.outbound.EventPublisher;
 import com.meridian.event.application.port.outbound.NotificationService;
 import com.meridian.event.application.port.outbound.OrderRepository;
-import com.meridian.event.domain.model.DomainEvent;
+import com.meridian.event.application.port.outbound.PaymentRepository;
 import com.meridian.event.domain.model.Order;
 import com.meridian.event.domain.model.valueobjects.Money;
 import com.meridian.event.domain.model.valueobjects.OrderId;
 import com.meridian.event.domain.model.valueobjects.PaymentId;
-import com.meridian.event.domain.model.valueobjects.Sku;
 import com.meridian.event.domain.model.PaymentProcessedEvent;
 import com.meridian.event.domain.service.PaymentProcessor;
 import org.springframework.stereotype.Service;
@@ -20,16 +18,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class DefaultPaymentService implements ProcessPaymentUseCase {
 
     private final OrderRepository orderRepository;
+    private final PaymentRepository paymentRepository;
     private final EventPublisher eventPublisher;
     private final NotificationService notificationService;
     private final PaymentProcessor paymentProcessor;
 
     public DefaultPaymentService(
             OrderRepository orderRepository,
+            PaymentRepository paymentRepository,
             EventPublisher eventPublisher,
             NotificationService notificationService,
             PaymentProcessor paymentProcessor) {
         this.orderRepository = orderRepository;
+        this.paymentRepository = paymentRepository;
         this.eventPublisher = eventPublisher;
         this.notificationService = notificationService;
         this.paymentProcessor = paymentProcessor;
@@ -54,6 +55,8 @@ public class DefaultPaymentService implements ProcessPaymentUseCase {
 
         payment.approve();
 
+        Payment savedPayment = paymentRepository.save(payment);
+
         PaymentProcessedEvent event = new PaymentProcessedEvent(
                 paymentId.value(),
                 orderId,
@@ -63,7 +66,7 @@ public class DefaultPaymentService implements ProcessPaymentUseCase {
         );
         eventPublisher.publish(event);
 
-        return payment;
+        return savedPayment;
     }
 }
 
