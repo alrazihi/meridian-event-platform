@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.meridian</groupId>
+        <artifactId>meridian-event-platform</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>event-application</artifactId>
+    <name>Meridian Event Application</name>
+    <description>Use cases and ports (Spring-free interfaces)</description>
+    <dependencies>
+        <dependency>
+            <groupId>com.meridian</groupId>
+            <artifactId>event-domain</artifactId>
+        </dependency>
+    </dependencies>
+</project>

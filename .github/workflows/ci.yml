@@ -1,0 +1,85 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  lint-and-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Run Spotless Check
+        run: mvn -B spotless:check -pl backend/event-domain,backend/event-application,backend/event-infrastructure,backend/event-service
+      - name: Run Checkstyle
+        run: mvn -B checkstyle:check -pl backend/event-domain,backend/event-application,backend/event-infrastructure,backend/event-service
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Run Unit Tests
+        run: mvn -B test -pl backend/event-domain,backend/event-application
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./backend/event-domain/target/site/jacoco/jacoco.xml,./backend/event-application/target/site/jacoco/jacoco.xml
+          fail_ci_if_error: false
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: meridian
+          POSTGRES_USER: meridian
+          POSTGRES_PASSWORD: meridian
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Run Integration Tests
+        run: mvn -B verify -pl backend/event-infrastructure,backend/event-service -DskipUnitTests
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/meridian
+          SPRING_DATASOURCE_USERNAME: meridian
+          SPRING_DATASOURCE_PASSWORD: meridian
+
+  build:
+    needs: [lint-and-format, unit-tests, integration-tests]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Build Backend
+        run: mvn -B package -DskipTests -pl backend/event-service -am
+      - name: Build Docker Image
+        run: docker build -t meridian-event-platform:${{ github.sha }} -f backend/event-service/Dockerfile .

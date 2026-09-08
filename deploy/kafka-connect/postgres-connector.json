@@ -1,0 +1,26 @@
+{
+  "name": "meridian-postgres-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "meridian",
+    "database.password": "meridian",
+    "database.dbname": "meridian",
+    "database.server.name": "meridian",
+    "table.include.list": "public.orders,public.payments,public.inventory_items",
+    "plugin.name": "pgoutput",
+    "publication.autocreate.mode": "filtered",
+    "slot.name": "meridian_slot",
+    "publication.name": "meridian_pub",
+    "snapshot.mode": "never",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter.schemas.enable": "false",
+    "transforms": "outbox",
+    "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+    "transforms.outbox.route.by.field": "aggregate_type",
+    "transforms.outbox.route.topic.replacement": "${aggregate_type}.events"
+  }
+}
