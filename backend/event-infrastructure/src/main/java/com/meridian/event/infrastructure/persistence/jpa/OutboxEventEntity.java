@@ -32,6 +32,10 @@ public class OutboxEventEntity {
     @Column(name = "last_error")
     private String lastError;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
+
     @PrePersist
     void onCreate() {
         if (createdAt == null) createdAt = Instant.now();

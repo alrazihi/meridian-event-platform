@@ -17,6 +17,7 @@ public class InventoryItemEntity {
     @Column(name = "reserved_quantity", nullable = false)
     private int reservedQuantity;
 
+    @Version
     @Column(name = "version", nullable = false)
     private long version;
 
