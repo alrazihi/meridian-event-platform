@@ -4,17 +4,21 @@ import com.meridian.event.application.port.outbound.EventPublisher;
 import com.meridian.event.domain.model.DomainEvent;
 import com.meridian.event.domain.model.OrderConfirmedEvent;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
@@ -29,20 +33,24 @@ class KafkaEventPublisherIntegrationTest {
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
 
+    @Autowired
+    private ConsumerFactory<String, String> consumerFactory;
+
     @Test
     void shouldPublishEventToKafka() {
+        String orderId = "order-pub-" + UUID.randomUUID();
         OrderConfirmedEvent event = new OrderConfirmedEvent(
-                "order-123",
-                "customer-456",
-                "100.00",
-                "corr-123"
+                orderId, "customer-pub", "100.00", UUID.randomUUID().toString()
         );
 
         eventPublisher.publish(event);
 
-        // Verify event was sent by consuming it
-        org.springframework.kafka.test.utils.KafkaTestUtils.getRecords(
-                kafkaTemplate.getDefaultTopic(), 1, 5000, TimeUnit.MILLISECONDS
-        );
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
+            var records = com.meridian.event.infrastructure.resilience.KafkaTestHelper.getRecords(
+                    consumerFactory, "order.events", 5000, 1
+            );
+            assertThat(records).isNotEmpty();
+            assertThat(records.iterator().next().value()).contains(orderId);
+        });
     }
 }

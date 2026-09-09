@@ -4,6 +4,7 @@ import com.meridian.event.application.port.outbound.InventoryItemRepository;
 import com.meridian.event.domain.model.InventoryItem;
 import com.meridian.event.domain.model.valueobjects.Sku;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: meridian-event-platform-config
+  namespace: meridian
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://meridian-postgres:5432/meridian?sslmode=require"
+  SPRING_DATASOURCE_USERNAME: "meridian"
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "meridian-kafka:9092"
+  SPRING_KAFKA_SECURITY_PROTOCOL: "SASL_SSL"
+  SPRING_KAFKA_SASL_MECHANISM: "PLAIN"
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,metrics,prometheus"
+  MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: "never"
+  MANAGEMENT_METRICS_TAGS_APPLICATION: "meridian-event-platform"
+  MANAGEMENT_METRICS_TAGS_ENVIRONMENT: "prod"
+  LOGGING_LEVEL_COM_MERIDIAN: "WARN"
+  LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_KAFKA: "WARN"
+  LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_TRANSACTION: "WARN"

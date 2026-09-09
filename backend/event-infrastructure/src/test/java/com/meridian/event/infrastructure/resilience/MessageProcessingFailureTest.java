@@ -9,9 +9,11 @@ import com.meridian.event.infrastructure.persistence.repository.ProcessedEventRe
 import com.meridian.event.infrastructure.projection.OrderProjectionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -30,6 +32,9 @@ class MessageProcessingFailureTest {
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
+
+    @Autowired
+    private ConsumerFactory<String, String> consumerFactory;
 
     @Autowired
     private ProcessedEventRepository processedEventRepository;
@@ -80,8 +85,8 @@ class MessageProcessingFailureTest {
         // Then: After max retries (3), should go to DLQ
         await().atMost(20, TimeUnit.SECONDS).untilAsserted(() -> {
             // Check DLQ has the message
-            var records = org.springframework.kafka.test.utils.KafkaTestUtils.getRecords(
-                    "dlq.order.events", 1, 5000, TimeUnit.MILLISECONDS
+            var records = com.meridian.event.infrastructure.resilience.KafkaTestHelper.getRecords(
+                    consumerFactory, "dlq.order.events", 5000, 1
             );
             assertThat(records).isNotEmpty();
         });
@@ -102,8 +107,8 @@ class MessageProcessingFailureTest {
 
         // Then: After 3 retries + initial attempt = 4 attempts total, goes to DLQ
         await().atMost(25, TimeUnit.SECONDS).untilAsserted(() -> {
-            var records = org.springframework.kafka.test.utils.KafkaTestUtils.getRecords(
-                    "dlq.order.events", 1, 5000, TimeUnit.MILLISECONDS
+            var records = com.meridian.event.infrastructure.resilience.KafkaTestHelper.getRecords(
+                    consumerFactory, "dlq.order.events", 5000, 1
             );
             assertThat(records).isNotEmpty();
         });

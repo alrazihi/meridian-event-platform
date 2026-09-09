@@ -8,9 +8,10 @@ import com.meridian.event.infrastructure.projection.OrderProjectionHandler;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.core.KafkaTemplate;
 
 @Configuration
-class ConsumerTestConfig {
+public class ConsumerTestConfig {
 
     @Bean
     public ObjectMapper objectMapper() {

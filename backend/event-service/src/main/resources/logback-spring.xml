@@ -1,137 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <springProperty scope="context" name="appName" source="spring.application.name"/>
-
-    <property name="LOG_PATTERN" value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} [%thread] %-5level %logger{36} - %msg%n"/>
-    <property name="JSON_PATTERN" value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} [%thread] %-5level %logger{36} %X{traceId} %X{spanId} %X{correlationId} - %msg%n"/>
-
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-            <providers>
-                <timestamp>
-                    <timeZone>UTC</timeZone>
-                </timestamp>
-                <loggerName>
-                    <shortenedLoggerNameLength>36</shortenedLoggerNameLength>
-                </loggerName>
-                <threadName/>
-                <level/>
-                <message/>
-                <mdc/>
-                <arguments/>
-                <stackTrace/>
-                <context>
-                    <property>
-                        <key>service</key>
-                        <value>${appName}</value>
-                    </property>
-                    <property>
-                        <key>environment</key>
-                        <value>${spring.profiles.active:dev}</value>
-                    </property>
-                </context>
-            </providers>
+        <encoder class="ch.qos.logback.classic.encoder.LogstashEncoder">
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+                <level>level</level>
+                <thread>thread</thread>
+                <logger>logger</logger>
+                <message>message</message>
+                <stackTrace>stackTrace</stackTrace>
+            </fieldNames>
+            <timeZone>UTC</timeZone>
         </encoder>
     </appender>
 
-    <appender name="AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_PATH:-./logs}/security-audit.log</file>
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH:-/var/log/meridian/application.log}</file>
+        <encoder class="ch.qos.logback.classic.encoder.LogstashEncoder">
+            <timeZone>UTC</timeZone>
+        </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_PATH:-./logs}/security-audit-%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <fileNamePattern>${LOG_PATH:-/var/log/meridian/application.%d{yyyy-MM-dd}.log}</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="SECURITY_AUDIT" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH:-/var/log/meridian/security-audit.log}</file>
+        <encoder class="ch.qos.logback.classic.encoder.LogstashEncoder">
+            <timeZone>UTC</timeZone>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH:-/var/log/meridian/security-audit.%d{yyyy-MM-dd}.log}</fileNamePattern>
             <maxHistory>90</maxHistory>
-            <totalSizeCap>1GB</totalSizeCap>
+            <totalSizeCap>10GB</totalSizeCap>
         </rollingPolicy>
-        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-            <providers>
-                <timestamp>
-                    <timeZone>UTC</timeZone>
-                </timestamp>
-                <loggerName/>
-                <level/>
-                <message/>
-                <mdc/>
-            </providers>
-        </encoder>
-        <filter class="ch.qos.logback.classic.filter.LoggerFilter">
-            <logger>SECURITY_AUDIT</logger>
-            <onMatch>ACCEPT</onMatch>
-            <onMismatch>DENY</onMismatch>
-        </filter>
     </appender>
 
-    <appender name="EVENT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_PATH:-./logs}/event-processing.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_PATH:-./logs}/event-processing-%d{yyyy-MM-dd}.log.gz</fileNamePattern>
-            <maxHistory>30</maxHistory>
-            <totalSizeCap>500MB</totalSizeCap>
-        </rollingPolicy>
-        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-            <providers>
-                <timestamp>
-                    <timeZone>UTC</timeZone>
-                </timestamp>
-                <loggerName/>
-                <level/>
-                <message/>
-                <mdc/>
-            </providers>
-        </encoder>
-        <filter class="ch.qos.logback.classic.filter.LoggerFilter">
-            <logger>EVENT_PROCESSING</logger>
-            <onMatch>ACCEPT</onMatch>
-            <onMismatch>DENY</onMismatch>
-        </filter>
-    </appender>
+    <logger name="com.meridian.event.infrastructure.security.audit.SecurityAuditLogger" level="INFO" additivity="false">
+        <appender-ref ref="SECURITY_AUDIT"/>
+    </logger>
 
-    <appender name="WORKFLOW_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_PATH:-./logs}/workflow.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_PATH:-./logs}/workflow-%d{yyyy-MM-dd}.log.gz</fileNamePattern>
-            <maxHistory>30</maxHistory>
-            <totalSizeCap>500MB</totalSizeCap>
-        </rollingPolicy>
-        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-            <providers>
-                <timestamp>
-                    <timeZone>UTC</timeZone>
-                </timestamp>
-                <loggerName/>
-                <level/>
-                <message/>
-                <mdc/>
-            </providers>
-        </encoder>
-        <filter class="ch.qos.logback.classic.filter.LoggerFilter">
-            <logger>WORKFLOW</logger>
-            <onMatch>ACCEPT</onMatch>
-            <onMismatch>DENY</onMismatch>
-        </filter>
-    </appender>
-
-    <root level="INFO">
+    <logger name="com.meridian" level="WARN" additivity="false">
         <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </logger>
+
+    <logger name="org.springframework.kafka" level="WARN" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </logger>
+
+    <logger name="org.springframework.transaction" level="WARN" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </logger>
+
+    <root level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
     </root>
-
-    <logger name="SECURITY_AUDIT" level="INFO" additivity="false">
-        <appender-ref ref="AUDIT_FILE"/>
-        <appender-ref ref="CONSOLE"/>
-    </logger>
-
-    <logger name="EVENT_PROCESSING" level="INFO" additivity="false">
-        <appender-ref ref="EVENT_FILE"/>
-        <appender-ref ref="CONSOLE"/>
-    </logger>
-
-    <logger name="WORKFLOW" level="INFO" additivity="false">
-        <appender-ref ref="WORKFLOW_FILE"/>
-        <appender-ref ref="CONSOLE"/>
-    </logger>
-
-    <logger name="com.meridian" level="DEBUG"/>
-    <logger name="org.springframework.kafka" level="WARN"/>
-    <logger name="org.springframework.transaction" level="WARN"/>
-    <logger name="org.hibernate.SQL" level="WARN"/>
-    <logger name="org.flywaydb" level="INFO"/>
-    <logger name="org.apache.kafka" level="WARN"/>
 </configuration>

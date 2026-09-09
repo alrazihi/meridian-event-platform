@@ -7,8 +7,11 @@ import com.meridian.event.domain.model.Payment;
 import com.meridian.event.domain.model.PaymentStatus;
 import com.meridian.event.application.port.inbound.PlaceOrderUseCase;
 import com.meridian.event.application.port.inbound.OrderLineInput;
+import com.meridian.event.infrastructure.config.TestConfig;
+import com.meridian.event.infrastructure.persistence.adapter.RepositoryTestConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -29,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
-@Import(TestConfig.class)
+@Import({RepositoryTestConfig.class, TestConfig.class})
 @DirtiesContext
 @Transactional
 class AsyncPaymentConcurrencyTest {
@@ -53,7 +56,7 @@ class AsyncPaymentConcurrencyTest {
 
     @BeforeEach
     void setUp() {
-        var order = placeOrderUseCase.placeOrder("customer-concurrency", List.of(new OrderLineInput("SKU-CONCURRENCY", 1, 100.00)));
+        var order = placeOrderUseCase.placeOrder("customer-concurrency", List.of(new OrderLineInput("SKU-CONCURRENCY", 1, 100.00)), "customer-concurrency");
         orderId = order.getId().value();
     }
 
@@ -61,7 +64,7 @@ class AsyncPaymentConcurrencyTest {
     void shouldHandleConcurrentAsyncCompletion() throws InterruptedException {
         int threadCount = 10;
 
-        Payment pendingPayment = processPaymentUseCase.processPayment(orderId, 100.00, "CREDIT_CARD");
+        Payment pendingPayment = processPaymentUseCase.processPayment(orderId, 100.00, "CREDIT_CARD", "customer-concurrency");
         assertThat(pendingPayment.getStatus()).isEqualTo(PaymentStatus.PENDING);
 
         CountDownLatch startLatch = new CountDownLatch(1);
@@ -99,7 +102,7 @@ class AsyncPaymentConcurrencyTest {
     void shouldNotAllowDuplicateAsyncCompletion() throws InterruptedException {
         int threadCount = 5;
 
-        Payment pendingPayment = processPaymentUseCase.processPayment(orderId, 100.00, "CREDIT_CARD");
+        Payment pendingPayment = processPaymentUseCase.processPayment(orderId, 100.00, "CREDIT_CARD", "customer-concurrency");
 
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(threadCount);

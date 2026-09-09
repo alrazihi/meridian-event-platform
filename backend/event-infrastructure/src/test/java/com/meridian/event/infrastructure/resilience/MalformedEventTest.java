@@ -9,9 +9,12 @@ import com.meridian.event.infrastructure.persistence.repository.ProcessedEventRe
 import com.meridian.event.infrastructure.projection.OrderProjectionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -30,6 +33,9 @@ class MalformedEventTest {
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
+
+    @Autowired
+    private ConsumerFactory<String, String> consumerFactory;
 
     @Autowired
     private ProcessedEventRepository processedEventRepository;
@@ -56,8 +62,8 @@ class MalformedEventTest {
 
         // Then: Should go to DLQ after retries, not crash consumer
         await().atMost(20, TimeUnit.SECONDS).untilAsserted(() -> {
-            var records = org.springframework.kafka.test.utils.KafkaTestUtils.getRecords(
-                    "dlq.order.events", 1, 5000, TimeUnit.MILLISECONDS
+            var records = com.meridian.event.infrastructure.resilience.KafkaTestHelper.getRecords(
+                    consumerFactory, "dlq.order.events", 5000, 1
             );
             assertThat(records).isNotEmpty();
         });
@@ -71,8 +77,8 @@ class MalformedEventTest {
 
         // Then: Should go to DLQ
         await().atMost(20, TimeUnit.SECONDS).untilAsserted(() -> {
-            var records = org.springframework.kafka.test.utils.KafkaTestUtils.getRecords(
-                    "dlq.order.events", 1, 5000, TimeUnit.MILLISECONDS
+            var records = com.meridian.event.infrastructure.resilience.KafkaTestHelper.getRecords(
+                    consumerFactory, "dlq.order.events", 5000, 1
             );
             assertThat(records).isNotEmpty();
         });
@@ -86,8 +92,8 @@ class MalformedEventTest {
 
         // Then: Should go to DLQ (deserializer may fail or handler ignores)
         await().atMost(20, TimeUnit.SECONDS).untilAsserted(() -> {
-            var records = org.springframework.kafka.test.utils.KafkaTestUtils.getRecords(
-                    "dlq.order.events", 1, 5000, TimeUnit.MILLISECONDS
+            var records = com.meridian.event.infrastructure.resilience.KafkaTestHelper.getRecords(
+                    consumerFactory, "dlq.order.events", 5000, 1
             );
             assertThat(records).isNotEmpty();
         });
@@ -101,8 +107,8 @@ class MalformedEventTest {
 
         // Then: After retries exhausted, goes to DLQ and consumer continues
         await().atMost(25, TimeUnit.SECONDS).untilAsserted(() -> {
-            var records = org.springframework.kafka.test.utils.KafkaTestUtils.getRecords(
-                    "dlq.order.events", 1, 5000, TimeUnit.MILLISECONDS
+            var records = com.meridian.event.infrastructure.resilience.KafkaTestHelper.getRecords(
+                    consumerFactory, "dlq.order.events", 5000, 1
             );
             assertThat(records).isNotEmpty();
         });
@@ -131,8 +137,8 @@ class MalformedEventTest {
 
         // Then: Should handle gracefully (go to DLQ)
         await().atMost(20, TimeUnit.SECONDS).untilAsserted(() -> {
-            var records = org.springframework.kafka.test.utils.KafkaTestUtils.getRecords(
-                    "dlq.order.events", 1, 5000, TimeUnit.MILLISECONDS
+            var records = com.meridian.event.infrastructure.resilience.KafkaTestHelper.getRecords(
+                    consumerFactory, "dlq.order.events", 5000, 1
             );
             assertThat(records).isNotEmpty();
         });

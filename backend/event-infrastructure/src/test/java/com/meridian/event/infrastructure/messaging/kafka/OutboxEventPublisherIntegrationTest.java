@@ -5,6 +5,7 @@ import com.meridian.event.domain.model.OrderConfirmedEvent;
 import com.meridian.event.infrastructure.persistence.jpa.OutboxEventEntity;
 import com.meridian.event.infrastructure.persistence.repository.OutboxEventRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;

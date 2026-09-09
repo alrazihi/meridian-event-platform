@@ -1,14 +1,13 @@
 package com.meridian.event.infrastructure.security.config;
 
-import com.github.bucket4j.Bucket;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
-
-import java.time.Duration;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -23,25 +22,20 @@ class RateLimitingConfigTest {
     private JwtDecoder jwtDecoder;
 
     @Test
-    void shouldCreateBucketWithCorrectLimits() {
-        // Access private method via reflection or test via filter
-        // For now, verify the config bean loads
+    void shouldCreateRateLimitingFilter() {
         assertThat(rateLimitingConfig).isNotNull();
+        assertThat(rateLimitingConfig.rateLimitingFilter()).isNotNull();
+        assertThat(rateLimitingFilter().getFilter()).isInstanceOf(OncePerRequestFilter.class);
     }
 
     @Test
-    void bucketShouldAllowRequestsWithinLimit() {
-        Bucket bucket = Bucket.builder()
-                .addLimit(com.github.bucket4j.Bandwidth.classic(100, 
-                        com.github.bucket4j.Refill.intervally(100, Duration.ofMinutes(1))))
-                .build();
+    void shouldRegisterFilterForApiPaths() {
+        var registration = rateLimitingConfig.rateLimitingFilter();
+        assertThat(registration.getUrlPatterns()).contains("/api/v1/*");
+        assertThat(registration.getOrder()).isEqualTo(1);
+    }
 
-        // Should allow 100 requests
-        for (int i = 0; i < 100; i++) {
-            assertThat(bucket.tryConsume(1)).isTrue();
-        }
-
-        // 101st should be rejected
-        assertThat(bucket.tryConsume(1)).isFalse();
+    private org.springframework.boot.web.servlet.FilterRegistrationBean<OncePerRequestFilter> rateLimitingFilter() {
+        return rateLimitingConfig.rateLimitingFilter();
     }
 }

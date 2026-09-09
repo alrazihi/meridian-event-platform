@@ -1,0 +1,74 @@
+groups:
+  - name: meridian-event-platform
+    rules:
+      - alert: HighErrorRate
+        expr: rate(http_server_requests_seconds_count{status=~"5.."}[5m]) / rate(http_server_requests_seconds_count[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High HTTP error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service is down"
+          description: "{{ $labels.instance }} has been down for more than 1 minute"
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(http_server_requests_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API latency detected"
+          description: "P95 latency is {{ $value }}s (threshold: 1s)"
+
+      - alert: DLQDepthGrowing
+        expr: rate(kafka_consumer_records_total{topic=~"dlq\\..*"}[5m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DLQ receiving messages"
+          description: "Topic {{ $labels.topic }} is receiving messages at {{ $value }} msg/s"
+
+      - alert: DatabaseConnectionPoolExhaustion
+        expr: hikaricp_connections_pending > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection pool near exhaustion"
+          description: "{{ $value }} connections pending (threshold: 5)"
+
+      - alert: KafkaConsumerLag
+        expr: kafka_consumer_group_lag > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kafka consumer lag detected"
+          description: "Consumer group {{ $labels.consumer_group }} lag is {{ $value }} messages"
+
+      - alert: OutboxEventsAccumulating
+        expr: rate(outbox_events_total{status="PENDING"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox events accumulating"
+          description: "{{ $value }} events/sec stuck in PENDING status"
+
+      - alert: HighMemoryUsage
+        expr: jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"} > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High JVM memory usage"
+          description: "Heap usage is {{ $value | humanizePercentage }} (threshold: 85%)"

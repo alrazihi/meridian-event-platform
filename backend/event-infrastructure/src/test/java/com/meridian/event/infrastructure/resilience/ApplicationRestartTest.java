@@ -6,7 +6,10 @@ import com.meridian.event.application.port.inbound.ProcessPaymentUseCase;
 import com.meridian.event.application.port.inbound.OrderLineInput;
 import com.meridian.event.application.port.outbound.OrderRepository;
 import com.meridian.event.application.port.outbound.PaymentRepository;
+import com.meridian.event.application.port.outbound.AuthorizationService;
+import com.meridian.event.application.port.outbound.ClientIpResolver;
 import com.meridian.event.application.service.DefaultPaymentService;
+import com.meridian.event.domain.model.Order;
 import com.meridian.event.domain.model.Payment;
 import com.meridian.event.domain.model.PaymentStatus;
 import com.meridian.event.infrastructure.messaging.kafka.KafkaEventPublisher;
@@ -17,12 +20,16 @@ import com.meridian.event.infrastructure.persistence.jpa.ProcessedEventEntity;
 import com.meridian.event.infrastructure.persistence.repository.OutboxEventRepository;
 import com.meridian.event.infrastructure.persistence.repository.ProcessedEventRepository;
 import com.meridian.event.infrastructure.projection.OrderProjectionHandler;
+import com.meridian.event.infrastructure.security.audit.SecurityAuditLogger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.transaction.annotation.Transactional;
@@ -135,11 +142,17 @@ class ApplicationRestartTest {
                 orderRepository, paymentRepository, eventPublisher,
                 new com.meridian.event.application.port.outbound.NotificationService() {
                     @Override public void notifyOrderConfirmed(String orderId, String customerId) {}
-                    @Override public void notifyPaymentProcessed(String paymentId, String customerId) {}
                 },
                 new com.meridian.event.infrastructure.payment.MockPaymentGateway(),
-                new com.meridian.event.infrastructure.security.audit.SecurityAuditLogger("test-secret"),
-                new org.springframework.mock.web.MockHttpServletRequest()
+                new com.meridian.event.application.port.outbound.AuthorizationService() {
+                    @Override public boolean isAdmin() { return false; }
+                    @Override public boolean canAccessOrder(String auth, String order) { return true; }
+                    @Override public boolean canProcessPayment(String auth, String order) { return true; }
+                },
+                new com.meridian.event.application.port.outbound.ClientIpResolver() {
+                    @Override public String resolveClientIp() { return "127.0.0.1"; }
+                },
+                java.util.concurrent.Executors.newSingleThreadExecutor()
         ).completePayment(pendingPayment.getId().value(), "customer-restart-payment");
         
         // Then: Payment approved
@@ -222,13 +235,15 @@ class ApplicationRestartTest {
 
     @Test
     void shouldHandleFlywayMigrationOnRestart() {
-        // Given: Database with existing schema (Flyway runs on startup)
-        // When: Application starts (Flyway migration runs)
-        // Then: Should not fail on existing tables (IF NOT EXISTS / ALTER IF NOT EXISTS)
-        
-        // Verify all tables exist and are accessible
-        assertThat(orderRepository.count()).isGreaterThanOrEqualTo(0);
-        assertThat(paymentRepository.count()).isGreaterThanOrEqualTo(0);
+        // Verify all tables exist and are accessible by saving and retrieving
+        Order order = new Order(com.meridian.event.domain.model.valueobjects.OrderId.generate(), "flyway-test", List.of());
+        orderRepository.save(order);
+        assertThat(orderRepository.findById(order.getId())).isPresent();
+
+        Payment payment = new Payment(com.meridian.event.domain.model.valueobjects.PaymentId.generate(), "order-123", com.meridian.event.domain.model.valueobjects.Money.of(new java.math.BigDecimal("10.00"), "USD"), "CREDIT_CARD");
+        paymentRepository.save(payment);
+        assertThat(paymentRepository.findById(payment.getId())).isPresent();
+
         assertThat(outboxRepository.count()).isGreaterThanOrEqualTo(0);
         assertThat(processedEventRepository.count()).isGreaterThanOrEqualTo(0);
     }

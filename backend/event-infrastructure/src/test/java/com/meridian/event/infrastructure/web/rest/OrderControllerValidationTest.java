@@ -5,6 +5,7 @@ import com.meridian.event.application.port.inbound.QueryOrderStatusUseCase;
 import com.meridian.event.infrastructure.security.audit.SecurityAuditLogger;
 import com.meridian.event.infrastructure.web.dto.PlaceOrderRequest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -18,6 +19,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -196,7 +198,6 @@ class OrderControllerValidationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                    "customerId": "customer-123",
                                     "lines": [{"sku": "SKU-1", "quantity": 2, "unitPrice": 10.00}]
                                 }
                                 """))

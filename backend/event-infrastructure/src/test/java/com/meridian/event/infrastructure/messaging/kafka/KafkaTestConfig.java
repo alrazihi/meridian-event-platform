@@ -26,7 +26,7 @@ import java.util.Map;
 
 @Testcontainers
 @Configuration
-class KafkaTestConfig {
+public class KafkaTestConfig {
 
     @Container
     @ServiceConnection

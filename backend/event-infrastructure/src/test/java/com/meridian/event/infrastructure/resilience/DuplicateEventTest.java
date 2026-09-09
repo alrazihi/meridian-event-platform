@@ -9,6 +9,7 @@ import com.meridian.event.infrastructure.persistence.repository.ProcessedEventRe
 import com.meridian.event.infrastructure.projection.OrderProjectionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -56,7 +57,7 @@ class DuplicateEventTest {
     }
 
     @Test
-    void shouldProcessEventExactlyOnceDespiteRedelivery() throws InterruptedException {
+    void shouldProcessEventExactlyOnceDespiteRedelivery() throws Exception {
         // Given: An event
         OrderConfirmedEvent event = new OrderConfirmedEvent(
                 ORDER_ID, CUSTOMER_ID, "250.00", "event-duplicate-1"
@@ -82,7 +83,7 @@ class DuplicateEventTest {
     }
 
     @Test
-    void shouldHandleConcurrentDuplicateDeliveries() throws InterruptedException {
+    void shouldHandleConcurrentDuplicateDeliveries() throws Exception {
         // Given: An event
         OrderConfirmedEvent event = new OrderConfirmedEvent(
                 ORDER_ID + "-concurrent", CUSTOMER_ID, "100.00", "event-concurrent-dup"

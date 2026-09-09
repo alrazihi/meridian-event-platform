@@ -5,6 +5,7 @@ import com.meridian.event.application.port.inbound.PlaceOrderUseCase;
 import com.meridian.event.application.port.inbound.ReserveInventoryUseCase;
 import com.meridian.event.application.port.inbound.OrderLineInput;
 import com.meridian.event.application.port.outbound.PaymentRepository;
+import com.meridian.event.application.port.outbound.OrderRepository;
 import com.meridian.event.application.port.outbound.InventoryItemRepository;
 import com.meridian.event.application.service.DefaultPaymentService;
 import com.meridian.event.domain.model.Payment;
@@ -13,6 +14,7 @@ import com.meridian.event.domain.model.InventoryItem;
 import com.meridian.event.domain.model.valueobjects.Sku;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -43,6 +45,9 @@ class StaleStateTest {
 
     @Autowired
     private ProcessPaymentUseCase processPaymentUseCase;
+
+    @Autowired
+    private OrderRepository orderRepository;
 
     @Autowired
     private ReserveInventoryUseCase reserveInventoryUseCase;
@@ -87,8 +92,18 @@ class StaleStateTest {
                 try {
                     startLatch.await();
                     new DefaultPaymentService(
-                            placeOrderUseCase, paymentRepository,
-                            null, null, null, null, null
+                            orderRepository, paymentRepository, null,
+                            new com.meridian.event.application.port.outbound.NotificationService() {
+                                @Override public void notifyOrderConfirmed(String orderId, String customerId) {}
+                            },
+                            new com.meridian.event.infrastructure.payment.MockPaymentGateway(),
+                            new com.meridian.event.application.port.outbound.AuthorizationService() {
+                                @Override public boolean isAdmin() { return false; }
+                                @Override public boolean canAccessOrder(String auth, String order) { return true; }
+                                @Override public boolean canProcessPayment(String auth, String order) { return true; }
+                            },
+                             () -> null,
+                            java.util.concurrent.Executors.newSingleThreadExecutor()
                     ).completePayment(pendingPayment.getId().value(), "customer-stale");
                     successCount.incrementAndGet();
                 } catch (OptimisticLockingFailureException e) {

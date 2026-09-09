@@ -23,7 +23,7 @@ import java.util.Map;
 
 @Testcontainers
 @Configuration
-class RepositoryTestConfig {
+public class RepositoryTestConfig {
 
     @Container
     @ServiceConnection

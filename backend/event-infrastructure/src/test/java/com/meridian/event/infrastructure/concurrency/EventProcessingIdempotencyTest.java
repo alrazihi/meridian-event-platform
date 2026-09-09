@@ -7,8 +7,11 @@ import com.meridian.event.infrastructure.messaging.kafka.OrderEventConsumer;
 import com.meridian.event.infrastructure.persistence.jpa.ProcessedEventEntity;
 import com.meridian.event.infrastructure.persistence.repository.ProcessedEventRepository;
 import com.meridian.event.infrastructure.projection.OrderProjectionHandler;
+import com.meridian.event.infrastructure.messaging.kafka.KafkaTestConfig;
+import com.meridian.event.infrastructure.messaging.kafka.ConsumerTestConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -59,7 +62,7 @@ class EventProcessingIdempotencyTest {
     }
 
     @Test
-    void shouldProcessEventExactlyOnceUnderConcurrentDelivery() throws InterruptedException {
+    void shouldProcessEventExactlyOnceUnderConcurrentDelivery() throws Exception {
         int deliveryCount = 20;
         
         OrderConfirmedEvent event = new OrderConfirmedEvent(
@@ -107,7 +110,7 @@ class EventProcessingIdempotencyTest {
     }
 
     @Test
-    void shouldMaintainIdempotencyAcrossDifferentConsumers() throws InterruptedException {
+    void shouldMaintainIdempotencyAcrossDifferentConsumers() throws Exception {
         OrderConfirmedEvent event = new OrderConfirmedEvent(
                 ORDER_ID,
                 CUSTOMER_ID,

@@ -4,9 +4,16 @@ import com.meridian.event.application.port.inbound.OrderLineInput;
 import com.meridian.event.application.port.inbound.PlaceOrderUseCase;
 import com.meridian.event.application.port.inbound.QueryOrderStatusUseCase;
 import com.meridian.event.application.port.outbound.AuthorizationService;
+import com.meridian.event.domain.model.Order;
+import com.meridian.event.domain.model.OrderLine;
+import com.meridian.event.domain.model.valueobjects.Money;
+import com.meridian.event.domain.model.valueobjects.OrderId;
+import com.meridian.event.domain.model.valueobjects.Sku;
 import com.meridian.event.infrastructure.web.dto.PlaceOrderRequest;
 import com.meridian.event.infrastructure.web.dto.OrderResponse;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -15,10 +22,12 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -44,16 +53,12 @@ class OrderControllerTest {
     @Test
     @WithMockUser(roles = "OPERATOR")
     void shouldPlaceOrderSuccessfully() throws Exception {
-        OrderResponse response = new OrderResponse(
-                "order-123",
-                "customer-123",
-                new java.math.BigDecimal("45.00"),
-                "CREATED",
-                java.time.Instant.now()
+        Order mockOrder = new Order(
+                OrderId.from("order-123"), "customer-123",
+                List.of(new OrderLine(Sku.of("SKU-1"), 2, Money.of(new BigDecimal("10.00"), "USD")))
         );
-        when(placeOrderUseCase.placeOrder(anyString(), any(), anyString())).thenReturn(
-                com.meridian.event.domain.model.OrderTest.createMockOrder()
-        );
+        mockOrder.setStatus(com.meridian.event.domain.model.OrderStatus.CONFIRMED);
+        when(placeOrderUseCase.placeOrder(anyString(), any(), anyString())).thenReturn(mockOrder);
         when(authorizationService.canAccessOrder(anyString(), anyString())).thenReturn(true);
 
         mockMvc.perform(post("/api/v1/orders")
@@ -108,8 +113,13 @@ class OrderControllerTest {
                 "CONFIRMED",
                 java.time.Instant.now()
         );
+        Order mockOrder = new Order(
+                OrderId.from("order-123"), "customer-123",
+                List.of(new OrderLine(Sku.of("SKU-1"), 1, Money.of(new BigDecimal("10.00"), "USD")))
+        );
+        mockOrder.setStatus(com.meridian.event.domain.model.OrderStatus.CONFIRMED);
         when(queryOrderStatusUseCase.getOrderStatus(eq("order-123"), anyString()))
-                .thenReturn(com.meridian.event.domain.model.OrderTest.createMockOrder());
+                .thenReturn(mockOrder);
 
         mockMvc.perform(get("/api/v1/orders/order-123"))
                 .andExpect(status().isOk())
@@ -121,8 +131,13 @@ class OrderControllerTest {
     @Test
     @WithMockUser(roles = "REVIEWER")
     void shouldAllowReviewerToGetOrder() throws Exception {
+        Order mockOrder = new Order(
+                OrderId.from("order-123"), "customer-123",
+                List.of(new OrderLine(Sku.of("SKU-1"), 1, Money.of(new BigDecimal("10.00"), "USD")))
+        );
+        mockOrder.setStatus(com.meridian.event.domain.model.OrderStatus.CONFIRMED);
         when(queryOrderStatusUseCase.getOrderStatus(eq("order-123"), anyString()))
-                .thenReturn(com.meridian.event.domain.model.OrderTest.createMockOrder());
+                .thenReturn(mockOrder);
 
         mockMvc.perform(get("/api/v1/orders/order-123"))
                 .andExpect(status().isOk());

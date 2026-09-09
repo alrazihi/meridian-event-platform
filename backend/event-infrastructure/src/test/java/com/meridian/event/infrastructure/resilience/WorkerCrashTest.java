@@ -1,22 +1,28 @@
 package com.meridian.event.infrastructure.resilience;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.meridian.event.application.port.inbound.ProcessPaymentUseCase;
 import com.meridian.event.application.port.inbound.PlaceOrderUseCase;
 import com.meridian.event.application.port.inbound.OrderLineInput;
 import com.meridian.event.application.port.outbound.OrderRepository;
 import com.meridian.event.application.port.outbound.PaymentRepository;
 import com.meridian.event.application.service.DefaultPaymentService;
+import com.meridian.event.domain.model.Order;
 import com.meridian.event.domain.model.Payment;
 import com.meridian.event.domain.model.PaymentStatus;
 import com.meridian.event.infrastructure.messaging.kafka.KafkaEventPublisher;
 import com.meridian.event.infrastructure.messaging.kafka.OutboxEventPublisher;
 import com.meridian.event.infrastructure.persistence.jpa.OutboxEventEntity;
 import com.meridian.event.infrastructure.persistence.repository.OutboxEventRepository;
+import com.meridian.event.infrastructure.persistence.repository.ProcessedEventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,7 +68,13 @@ class WorkerCrashTest {
     private OutboxEventRepository outboxRepository;
 
     @Autowired
+    private ProcessedEventRepository processedEventRepository;
+
+    @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private KafkaTemplate<String, String> kafkaTemplate;
 
     @Autowired
     private OrderLineInput orderLineInput;
@@ -148,7 +160,7 @@ class WorkerCrashTest {
     }
 
     @Test
-    void shouldNotLoseEventsOnConsumerCrash() throws InterruptedException {
+    void shouldNotLoseEventsOnConsumerCrash() throws Exception {
         // Given: Events in Kafka, consumer processes some then crashes
         // With enable-auto-commit=false, offset only committed after successful processing
         

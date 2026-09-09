@@ -1,5 +1,6 @@
 package com.meridian.event.infrastructure.resilience;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.meridian.event.application.port.inbound.ProcessPaymentUseCase;
 import com.meridian.event.application.port.inbound.PlaceOrderUseCase;
 import com.meridian.event.application.port.inbound.OrderLineInput;
@@ -14,6 +15,7 @@ import com.meridian.event.infrastructure.persistence.jpa.OutboxEventEntity;
 import com.meridian.event.infrastructure.persistence.repository.OutboxEventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -91,11 +93,17 @@ class NetworkTimeoutTest {
                 orderRepository, paymentRepository, eventPublisher,
                 new com.meridian.event.application.port.outbound.NotificationService() {
                     @Override public void notifyOrderConfirmed(String orderId, String customerId) {}
-                    @Override public void notifyPaymentProcessed(String paymentId, String customerId) {}
                 },
                 new com.meridian.event.infrastructure.payment.MockPaymentGateway(),
-                new com.meridian.event.infrastructure.security.audit.SecurityAuditLogger("test-secret"),
-                new org.springframework.mock.web.MockHttpServletRequest()
+                new com.meridian.event.application.port.outbound.AuthorizationService() {
+                    @Override public boolean isAdmin() { return false; }
+                    @Override public boolean canAccessOrder(String auth, String order) { return true; }
+                    @Override public boolean canProcessPayment(String auth, String order) { return true; }
+                },
+                new com.meridian.event.application.port.outbound.ClientIpResolver() {
+                    @Override public String resolveClientIp() { return "127.0.0.1"; }
+                },
+                java.util.concurrent.Executors.newSingleThreadExecutor()
         ).processPaymentAsync(order.getId().value(), 100.00, "CREDIT_CARD", "customer-gw-timeout");
         
         future.join();

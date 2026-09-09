@@ -5,8 +5,11 @@ import com.meridian.event.domain.model.Payment;
 import com.meridian.event.domain.model.PaymentStatus;
 import com.meridian.event.domain.model.valueobjects.Money;
 import com.meridian.event.domain.model.valueobjects.PaymentId;
+import com.meridian.event.infrastructure.config.TestConfig;
+import com.meridian.event.infrastructure.persistence.adapter.RepositoryTestConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -25,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
-@Import(RepositoryTestConfig.class)
+@Import({RepositoryTestConfig.class, TestConfig.class})
 @DirtiesContext
 @Transactional
 class PaymentConcurrencyTest {

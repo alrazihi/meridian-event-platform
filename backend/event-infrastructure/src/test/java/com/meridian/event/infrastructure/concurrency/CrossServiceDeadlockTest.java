@@ -4,8 +4,11 @@ import com.meridian.event.application.port.inbound.PlaceOrderUseCase;
 import com.meridian.event.application.port.inbound.ProcessPaymentUseCase;
 import com.meridian.event.application.port.inbound.ReserveInventoryUseCase;
 import com.meridian.event.application.port.inbound.OrderLineInput;
+import com.meridian.event.infrastructure.config.TestConfig;
+import com.meridian.event.infrastructure.persistence.adapter.RepositoryTestConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -24,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
-@Import(TestConfig.class)
+@Import({RepositoryTestConfig.class, TestConfig.class})
 @DirtiesContext
 @Transactional
 class CrossServiceDeadlockTest {
@@ -41,9 +44,11 @@ class CrossServiceDeadlockTest {
     @Autowired
     private OrderLineInput orderLineInput;
 
+    private AtomicInteger failures = new AtomicInteger(0);
+
     @BeforeEach
     void setUp() {
-        // Pre-create inventory for testing
+        failures.set(0);
     }
 
     @Test
@@ -74,7 +79,7 @@ class CrossServiceDeadlockTest {
                     orderSuccess.incrementAndGet();
                     
                     // 2. Process payment (locks order then payment)
-                    var payment = processPaymentUseCase.processPayment(orderId, 100.00, "CREDIT_CARD");
+                    var payment = processPaymentUseCase.processPayment(orderId, 100.00, "CREDIT_CARD", customerId);
                     paymentSuccess.incrementAndGet();
                     
                     // 3. Reserve inventory (locks inventory)

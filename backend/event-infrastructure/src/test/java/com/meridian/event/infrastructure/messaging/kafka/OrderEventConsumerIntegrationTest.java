@@ -1,5 +1,6 @@
 package com.meridian.event.infrastructure.messaging.kafka;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.meridian.event.domain.model.DomainEvent;
 import com.meridian.event.domain.model.OrderConfirmedEvent;
 import com.meridian.event.infrastructure.persistence.jpa.ProcessedEventEntity;
@@ -7,9 +8,11 @@ import com.meridian.event.infrastructure.persistence.repository.ProcessedEventRe
 import com.meridian.event.infrastructure.projection.OrderProjectionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -31,6 +34,9 @@ class OrderEventConsumerIntegrationTest {
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
+
+    @Autowired
+    private ConsumerFactory<String, String> consumerFactory;
 
     @Autowired
     private ProcessedEventRepository processedEventRepository;
@@ -101,8 +107,8 @@ class OrderEventConsumerIntegrationTest {
         // Wait for retries and DLQ
         await().atMost(20, TimeUnit.SECONDS).untilAsserted(() -> {
             // Check DLQ has the message
-            var records = org.springframework.kafka.test.utils.KafkaTestUtils.getRecords(
-                    "dlq.order.events", 1, 5000, TimeUnit.MILLISECONDS
+            var records = com.meridian.event.infrastructure.resilience.KafkaTestHelper.getRecords(
+                    consumerFactory, "dlq.order.events", 5000, 1
             );
             assertThat(records).isNotEmpty();
         });
