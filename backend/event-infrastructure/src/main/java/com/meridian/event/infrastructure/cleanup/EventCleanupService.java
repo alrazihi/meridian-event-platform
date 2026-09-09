@@ -6,6 +6,7 @@ import com.meridian.event.infrastructure.persistence.repository.OutboxEventRepos
 import com.meridian.event.infrastructure.persistence.repository.ProcessedEventRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,7 +44,7 @@ public class EventCleanupService {
 
         // Clean up processed events in batches
         while (true) {
-            var batch = processedEventRepository.findOldEvents(cutoffProcessed, BATCH_SIZE);
+            var batch = processedEventRepository.findOldEvents(cutoffProcessed, PageRequest.of(0, BATCH_SIZE));
             if (batch.isEmpty()) break;
             processedEventRepository.deleteAll(batch);
             deletedProcessed += batch.size();
@@ -52,7 +53,7 @@ public class EventCleanupService {
 
         // Clean up sent outbox events in batches
         while (true) {
-            var batch = outboxEventRepository.findOldSentEvents(cutoffOutbox, BATCH_SIZE);
+            var batch = outboxEventRepository.findOldSentEvents(cutoffOutbox, PageRequest.of(0, BATCH_SIZE));
             if (batch.isEmpty()) break;
             outboxEventRepository.deleteAll(batch);
             deletedOutbox += batch.size();

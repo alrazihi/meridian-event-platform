@@ -98,13 +98,7 @@ public class SecurityConfig {
             KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
             keyGen.initialize(2048);
             KeyPair keyPair = keyGen.generateKeyPair();
-            
-            RSAKey rsaKey = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
-                    .keyID(UUID.randomUUID().toString())
-                    .build();
-            
-            JWKSet jwkSet = new JWKSet(rsaKey);
-            return NimbusJwtDecoder.withJWKSetSource(new ImmutableJWKSet<>(jwkSet)).build();
+            return NimbusJwtDecoder.withPublicKey((RSAPublicKey) keyPair.getPublic()).build();
         } catch (Exception e) {
             throw new IllegalStateException("Failed to generate dev JWT key pair", e);
         }

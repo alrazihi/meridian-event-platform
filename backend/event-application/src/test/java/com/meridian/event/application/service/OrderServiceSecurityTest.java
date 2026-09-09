@@ -3,9 +3,11 @@ package com.meridian.event.application.service;
 import com.meridian.event.application.port.inbound.OrderLineInput;
 import com.meridian.event.application.port.inbound.PlaceOrderUseCase;
 import com.meridian.event.application.port.inbound.QueryOrderStatusUseCase;
+import com.meridian.event.application.port.outbound.AuthorizationService;
 import com.meridian.event.application.port.outbound.EventPublisher;
 import com.meridian.event.application.port.outbound.NotificationService;
 import com.meridian.event.application.port.outbound.OrderRepository;
+import com.meridian.event.domain.exception.AuthorizationException;
 import com.meridian.event.domain.model.Order;
 import com.meridian.event.domain.model.OrderLine;
 import com.meridian.event.domain.model.valueobjects.Money;
@@ -41,6 +43,9 @@ class OrderServiceSecurityTest {
     @Mock
     private OrderValidator orderValidator;
 
+    @Mock
+    private AuthorizationService authorizationService;
+
     private DefaultOrderService orderService;
 
     @BeforeEach
@@ -49,12 +54,12 @@ class OrderServiceSecurityTest {
                 orderRepository,
                 eventPublisher,
                 notificationService,
-                null, // processPaymentUseCase
-                null, // reserveInventoryUseCase
-                orderValidator
+                orderValidator,
+                authorizationService
         );
 
         when(orderValidator.validate(any())).thenReturn(new OrderValidator.ValidationResult(true, null));
+        when(authorizationService.canAccessOrder(any(), any())).thenReturn(true);
     }
 
     @Test
@@ -85,8 +90,10 @@ class OrderServiceSecurityTest {
         line.setQuantity(1);
         line.setUnitPrice(10.00);
 
+        when(authorizationService.canAccessOrder(eq(authenticatedCustomerId), eq(customerId))).thenReturn(false);
+
         assertThatThrownBy(() -> orderService.placeOrder(customerId, List.of(line), authenticatedCustomerId))
-                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .isInstanceOf(AuthorizationException.class)
                 .hasMessageContaining("Cannot place order for another customer");
     }
 
@@ -113,9 +120,10 @@ class OrderServiceSecurityTest {
 
         Order order = new Order(OrderId.from(orderId), customerId, List.of());
         when(orderRepository.findById(OrderId.from(orderId))).thenReturn(Optional.of(order));
+        when(authorizationService.canAccessOrder(eq(authenticatedCustomerId), eq(customerId))).thenReturn(false);
 
         assertThatThrownBy(() -> orderService.getOrderStatus(orderId, authenticatedCustomerId))
-                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .isInstanceOf(AuthorizationException.class)
                 .hasMessageContaining("Access denied");
     }
 

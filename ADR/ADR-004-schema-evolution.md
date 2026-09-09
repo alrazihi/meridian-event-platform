@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Partially Implemented
 
 ## Context
 
@@ -21,6 +21,16 @@ Use **Apache Avro** for event serialization with schema registry.
 - Additive changes only (new optional fields)
 - No removal or renaming of fields
 - Deprecate fields before removal (grace period)
+
+## Current Implementation Status
+
+**Note:** This ADR was accepted but the current implementation uses Jackson JSON serialization instead of Avro. The Schema Registry infrastructure is available in docker-compose but the application does not connect to it. This is a known gap.
+
+### Planned Migration Path
+1. Add Avro schema definitions for all domain events
+2. Configure Schema Registry client in application
+3. Migrate Kafka producer/consumer to use Avro serialization
+4. Enable compatibility checks in Schema Registry
 
 ## Consequences
 

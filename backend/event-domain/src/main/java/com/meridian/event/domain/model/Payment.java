@@ -14,7 +14,7 @@ public class Payment {
     private PaymentStatus status;
     private String paymentMethod;
     private String transactionId;
-    private final Instant createdAt;
+    private Instant createdAt;
     private Instant updatedAt;
     private long version;
 
@@ -59,10 +59,10 @@ public class Payment {
     public long getVersion() { return version; }
 
     // Package-private setters for persistence reconstruction
-    void setAmount(Money amount) { this.amount = amount; }
-    void setStatus(PaymentStatus status) { this.status = status; }
-    void setVersion(long version) { this.version = version; }
-    void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-    void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public void setAmount(Money amount) { this.amount = amount; }
+    public void setStatus(PaymentStatus status) { this.status = status; }
+    public void setVersion(long version) { this.version = version; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }
 

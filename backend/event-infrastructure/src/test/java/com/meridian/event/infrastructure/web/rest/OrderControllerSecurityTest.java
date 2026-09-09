@@ -2,6 +2,7 @@ package com.meridian.event.infrastructure.web.rest;
 
 import com.meridian.event.application.port.inbound.PlaceOrderUseCase;
 import com.meridian.event.application.port.inbound.QueryOrderStatusUseCase;
+import com.meridian.event.application.port.outbound.AuthorizationService;
 import com.meridian.event.infrastructure.security.audit.SecurityAuditLogger;
 import com.meridian.event.infrastructure.web.dto.PlaceOrderRequest;
 import com.meridian.event.infrastructure.web.dto.OrderResponse;
@@ -17,7 +18,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -45,6 +45,9 @@ class OrderControllerSecurityTest {
     @MockBean
     private SecurityAuditLogger auditLogger;
 
+    @MockBean
+    private AuthorizationService authorizationService;
+
     @Test
     @WithMockUser(roles = "OPERATOR")
     void shouldAllowOperatorToPlaceOrderForSelf() throws Exception {
@@ -53,13 +56,13 @@ class OrderControllerSecurityTest {
 
         when(placeOrderUseCase.placeOrder(eq(customerId), any(), eq(customerId)))
                 .thenReturn(createMockOrder(customerId, "order-123"));
+        when(authorizationService.canAccessOrder(eq(customerId), eq(customerId))).thenReturn(true);
 
         mockMvc.perform(post("/api/v1/orders")
                         .with(jwt().jwt(jwt))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                    "customerId": "customer-123",
                                     "lines": [{"sku": "SKU-1", "quantity": 1, "unitPrice": 10.00}]
                                 }
                                 """))
@@ -74,15 +77,13 @@ class OrderControllerSecurityTest {
         String targetCustomer = "customer-456";
         Jwt jwt = createJwtWithCustomerId(authenticatedCustomer);
 
-        when(placeOrderUseCase.placeOrder(eq(targetCustomer), any(), eq(authenticatedCustomer)))
-                .thenThrow(new org.springframework.security.access.AccessDeniedException("Cannot place order for another customer"));
+        when(authorizationService.canAccessOrder(eq(authenticatedCustomer), eq(targetCustomer))).thenReturn(false);
 
         mockMvc.perform(post("/api/v1/orders")
                         .with(jwt().jwt(jwt))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                    "customerId": "customer-456",
                                     "lines": [{"sku": "SKU-1", "quantity": 1, "unitPrice": 10.00}]
                                 }
                                 """))

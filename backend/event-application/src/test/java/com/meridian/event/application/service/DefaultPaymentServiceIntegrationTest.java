@@ -36,9 +36,6 @@ class DefaultPaymentServiceIntegrationTest {
     @Autowired
     private com.meridian.event.application.port.inbound.PlaceOrderUseCase placeOrderUseCase;
 
-    @Autowired
-    private com.meridian.event.application.port.inbound.OrderLineInput;
-
     @Test
     void shouldInitiatePaymentAndReturnPending() {
         Order order = placeOrderUseCase.placeOrder("customer-123", List.of(new OrderLineInput("SKU-1", 1, 100.00)));

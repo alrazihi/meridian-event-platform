@@ -61,15 +61,14 @@ docker compose up --build
 
 ## Architecture Highlights
 
-- **CDC with Debezium** for reliable change data capture
-- **Exactly-once semantics** with Kafka transactions
-- **Event schema evolution** with backward compatibility
+- **CDC with Debezium** for reliable change data capture (configured but not actively used by the application)
+- **Outbox pattern** for atomic event persistence
 - **Idempotent consumers** with offset management
 - **Dead-letter queues** for poison messages
 - **Retry with backoff** for transient failures
-- **CQRS** with materialized views
-- **Outbox pattern** for atomicity
-- **Observability** with Micrometer + OpenTelemetry
+- **CQRS** with manually maintained read model projections
+- **Saga pattern** for async payment processing
+- **Observability** with Micrometer metrics, structured logging, and correlation IDs
 
 ## Project Structure
 
@@ -83,7 +82,9 @@ meridian-event-platform/
 ├── deploy/
 │   └── kafka-connect/
 ├── docker-compose.yml
-├── .github/workflows/ci.yml
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 └── docs/
 ```
 

@@ -1,6 +1,8 @@
 package com.meridian.event.application.service;
 
 import com.meridian.event.application.port.inbound.ReserveInventoryUseCase;
+import com.meridian.event.application.port.outbound.AuthorizationService;
+import com.meridian.event.application.port.outbound.ClientIpResolver;
 import com.meridian.event.application.port.outbound.EventPublisher;
 import com.meridian.event.application.port.outbound.InventoryItemRepository;
 import com.meridian.event.domain.model.InventoryItem;
@@ -26,11 +28,22 @@ class InventoryServiceSecurityTest {
     @Mock
     private EventPublisher eventPublisher;
 
+    @Mock
+    private AuthorizationService authorizationService;
+
+    @Mock
+    private ClientIpResolver clientIpResolver;
+
     private DefaultInventoryService inventoryService;
 
     @BeforeEach
     void setUp() {
-        inventoryService = new DefaultInventoryService(inventoryRepository, eventPublisher);
+        inventoryService = new DefaultInventoryService(
+                inventoryRepository,
+                eventPublisher,
+                authorizationService,
+                clientIpResolver
+        );
     }
 
     @Test

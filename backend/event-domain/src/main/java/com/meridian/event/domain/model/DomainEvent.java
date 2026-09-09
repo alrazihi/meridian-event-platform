@@ -37,6 +37,6 @@ public abstract class DomainEvent {
     public String getCausationId() { return causationId; }
 
     // Package-private setters for deserialization
-    void setEventId(String eventId) { this.eventId = eventId; }
-    void setOccurredAt(Instant occurredAt) { this.occurredAt = occurredAt; }
+    public void setEventId(String eventId) { this.eventId = eventId; }
+    public void setOccurredAt(Instant occurredAt) { this.occurredAt = occurredAt; }
 }

@@ -3,6 +3,7 @@ package com.meridian.event.infrastructure.web.rest;
 import com.meridian.event.application.port.inbound.OrderLineInput;
 import com.meridian.event.application.port.inbound.PlaceOrderUseCase;
 import com.meridian.event.application.port.inbound.QueryOrderStatusUseCase;
+import com.meridian.event.application.port.outbound.AuthorizationService;
 import com.meridian.event.infrastructure.web.dto.PlaceOrderRequest;
 import com.meridian.event.infrastructure.web.dto.OrderResponse;
 import org.junit.jupiter.api.Test;
@@ -15,7 +16,6 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
-import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -38,6 +38,9 @@ class OrderControllerTest {
     @MockBean
     private QueryOrderStatusUseCase queryOrderStatusUseCase;
 
+    @MockBean
+    private AuthorizationService authorizationService;
+
     @Test
     @WithMockUser(roles = "OPERATOR")
     void shouldPlaceOrderSuccessfully() throws Exception {
@@ -48,15 +51,15 @@ class OrderControllerTest {
                 "CREATED",
                 java.time.Instant.now()
         );
-        when(placeOrderUseCase.placeOrder(anyString(), any())).thenReturn(
+        when(placeOrderUseCase.placeOrder(anyString(), any(), anyString())).thenReturn(
                 com.meridian.event.domain.model.OrderTest.createMockOrder()
         );
+        when(authorizationService.canAccessOrder(anyString(), anyString())).thenReturn(true);
 
         mockMvc.perform(post("/api/v1/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                    "customerId": "customer-123",
                                     "lines": [
                                         {"sku": "SKU-1", "quantity": 2, "unitPrice": 10.00},
                                         {"sku": "SKU-2", "quantity": 1, "unitPrice": 25.00}
@@ -76,7 +79,6 @@ class OrderControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                    "customerId": "customer-123",
                                     "lines": [{"sku": "SKU-1", "quantity": 0, "unitPrice": 10.00}]
                                 }
                                 """))
@@ -90,7 +92,6 @@ class OrderControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                    "customerId": "customer-123",
                                     "lines": []
                                 }
                                 """))

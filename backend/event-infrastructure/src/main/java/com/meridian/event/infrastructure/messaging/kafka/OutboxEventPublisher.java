@@ -53,8 +53,8 @@ public class OutboxEventPublisher {
                 CorrelationIdContext.setCorrelationId(correlationId);
             }
 
+            String topic = resolveTopic(event.getEventType());
             try {
-                String topic = resolveTopic(event.getEventType());
                 kafkaTemplate.send(topic, event.getAggregateId(), event.getPayload()).get();
 
                 event.setSentAt(Instant.now());

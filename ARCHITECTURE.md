@@ -83,11 +83,11 @@
 - **Security:** JWT authentication, method security
 
 ### Runtime Components
-- **Debezium:** Captures changes from PostgreSQL WAL
+- **Debezium:** Configured for CDC but the application uses its own outbox pattern for event publishing
 - **Kafka Connect:** Manages Debezium connector
 - **Kafka Broker:** Message transport
-- **Schema Registry:** Avro schema management (concept)
-- **Kafka Streams:** Stream processing (concept)
+- **Schema Registry:** Available in docker-compose but not actively used by the application (events use JSON serialization)
+- **Kafka Streams:** Not implemented; read model is maintained by a synchronous consumer
 
 ## Key Design Decisions
 

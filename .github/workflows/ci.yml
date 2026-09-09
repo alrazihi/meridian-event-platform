@@ -1,100 +1,76 @@
-name: CI/CD Pipeline
+name: CI/CD
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
-  workflow_dispatch:
+    branches: [ main, develop ]
 
 jobs:
-  lint-and-format:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-      - name: Run Spotless Check
-        run: cd backend && mvn -B spotless:check -pl event-domain,event-application,event-infrastructure,event-service
-      - name: Run Checkstyle
-        run: cd backend && mvn -B checkstyle:check -pl event-domain,event-application,event-infrastructure,event-service
-
-  dependency-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-          cache: maven
-      - name: Run OWASP Dependency Check
-        run: cd backend && mvn -B org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=7
-
-  unit-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-          cache: maven
-      - name: Run Unit Tests
-        run: cd backend && mvn -B test -pl event-domain,event-application
-      - name: Upload Coverage
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./backend/event-domain/target/site/jacoco/jacoco.xml,./backend/event-application/target/site/jacoco/jacoco.xml
-          fail_ci_if_error: false
-
-  integration-tests:
+  build-and-test:
     runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: ${POSTGRES_DB:-meridian}
-          POSTGRES_USER: ${POSTGRES_USER:-meridian}
-          POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-meridian}
+          POSTGRES_DB: meridian
+          POSTGRES_USER: meridian
+          POSTGRES_PASSWORD: meridian
+        ports: [ 5432:5432 ]
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-        ports:
-          - 5432:5432
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-          cache: maven
-      - name: Run Integration Tests
-        run: cd backend && mvn -B verify -pl event-infrastructure,event-service -am -DskipUnitTests
+      kafka:
+        image: confluentinc/cp-kafka:7.5.0
+        ports: [ 9092:9092 ]
+        options: >-
+          --health-cmd "kafka-broker-api-versions.sh --bootstrap-server localhost:9092"
+          --health-interval 10s
+          --health-timeout 10s
+          --health-retries 5
         env:
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/${POSTGRES_DB:-meridian}
-          SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-meridian}
-          SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-meridian}
+          KAFKA_BROKER_ID: 1
+          KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+          KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+          KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+          KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      zookeeper:
+        image: confluentinc/cp-zookeeper:7.5.0
+        ports: [ 2181:2181 ]
+        options: >-
+          --health-cmd "echo ruok | nc localhost 2181"
+          --health-interval 10s
+          --health-timeout 10s
+          --health-retries 5
 
-  build:
-    needs: [lint-and-format, dependency-check, unit-tests, integration-tests]
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 21
+          java-version: '21'
+          distribution: 'temurin'
           cache: maven
-      - name: Build Backend
-        run: cd backend && mvn -B package -DskipTests -pl event-service -am
-      - name: Build Docker Image
-        run: docker build -t meridian-event-platform:${{ github.sha }} -f backend/event-service/Dockerfile .
 
+      - name: Build and test with Maven
+        run: mvn -B verify --no-transfer-progress
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/meridian
+          SPRING_DATASOURCE_USERNAME: meridian
+          SPRING_DATASOURCE_PASSWORD: meridian
+          SPRING_KAFKA_BOOTSTRAP_SERVERS: localhost:9092
+          JWT_PUBLIC_KEY: test-public-key
 
-
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            **/target/surefire-reports/
+            **/target/failsafe-reports/

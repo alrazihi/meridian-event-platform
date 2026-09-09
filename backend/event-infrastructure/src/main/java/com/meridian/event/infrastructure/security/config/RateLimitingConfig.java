@@ -1,8 +1,5 @@
 package com.meridian.event.infrastructure.security.config;
 
-import com.github.bucket4j.Bandwidth;
-import com.github.bucket4j.Bucket;
-import com.github.bucket4j.Refill;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,14 +13,23 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Configuration
 public class RateLimitingConfig {
 
-    private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
+    private static final int WINDOW_SECONDS = 60;
+    private static final int MAX_REQUESTS = 100;
+
+    private static class RateLimitBucket {
+        final AtomicInteger count = new AtomicInteger(0);
+        Instant windowStart = Instant.now();
+    }
+
+    private final Map<String, RateLimitBucket> buckets = new ConcurrentHashMap<>();
 
     @Bean
     public FilterRegistrationBean<OncePerRequestFilter> rateLimitingFilter() {
@@ -34,20 +40,24 @@ public class RateLimitingConfig {
                     throws ServletException, IOException {
 
                 String key = resolveKey(request);
-                Bucket bucket = buckets.computeIfAbsent(key, k -> createBucket());
+                RateLimitBucket bucket = buckets.computeIfAbsent(key, k -> new RateLimitBucket());
 
-                if (bucket.tryConsume(1)) {
+                Instant now = Instant.now();
+                if (now.isAfter(bucket.windowStart.plusSeconds(WINDOW_SECONDS))) {
+                    bucket.count.set(0);
+                    bucket.windowStart = now;
+                }
+
+                if (bucket.count.incrementAndGet() <= MAX_REQUESTS) {
                     filterChain.doFilter(request, response);
                 } else {
-                    response.setStatus(HttpServletResponse.SC_TOO_MANY_REQUESTS);
+                    response.setStatus(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS.value());
                     response.setContentType("application/json");
                     response.getWriter().write("{\"status\":429,\"error\":\"Too Many Requests\",\"message\":\"Rate limit exceeded\"}");
                 }
             }
 
             private String resolveKey(HttpServletRequest request) {
-                // Use IP + authenticated user (from SecurityContext) for rate limiting
-                // This avoids collisions from truncated auth headers
                 String ip = request.getRemoteAddr();
                 String userId = getAuthenticatedUserId();
                 return ip + ":" + (userId != null ? userId : "anonymous");
@@ -56,7 +66,6 @@ public class RateLimitingConfig {
             private String getAuthenticatedUserId() {
                 Authentication auth = SecurityContextHolder.getContext().getAuthentication();
                 if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
-                    // Prefer customer_id claim, fall back to subject
                     String customerId = jwt.getClaimAsString("customer_id");
                     if (customerId != null) {
                         return customerId;
@@ -65,15 +74,9 @@ public class RateLimitingConfig {
                 }
                 return null;
             }
-
-            private Bucket createBucket() {
-                // 100 requests per minute per client
-                Bandwidth limit = Bandwidth.classic(100, Refill.intervally(100, Duration.ofMinutes(1)));
-                return Bucket.builder().addLimit(limit).build();
-            }
         });
         registration.addUrlPatterns("/api/v1/*");
-        registration.setOrder(1); // Run early
+        registration.setOrder(1);
         return registration;
     }
 }

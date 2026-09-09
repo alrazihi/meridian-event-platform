@@ -68,20 +68,18 @@ public class OrderEventConsumer {
             @Header(KafkaHeaders.OFFSET) long offset,
             @Header(value = KafkaHeaders.RECEIVED_TIMESTAMP, required = false) Long timestamp,
             @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
-            Acknowledgment acknowledgment) {
-        
+            Acknowledgment acknowledgment) throws Exception {
+
         try {
             DomainEvent event = objectMapper.readValue(payload, DomainEvent.class);
             String eventId = event.getEventId();
 
-            // Set correlation context from Kafka headers for structured logging
             CorrelationIdContext.setCorrelationId(event.getCorrelationId());
-            CorrelationIdContext.setTraceId(event.getCorrelationId()); // Use correlationId as traceId if no separate traceId
-            
+            CorrelationIdContext.setTraceId(event.getCorrelationId());
+
             log.info("Received event eventId={} eventType={} aggregateId={} correlationId={} partition={} offset={}",
                     eventId, event.getEventType(), event.getAggregateId(), event.getCorrelationId(), partition, offset);
 
-            // Extract customer ID for tenant isolation of idempotency keys
             String customerId = extractCustomerId(event);
 
             if (processedEventRepository.existsByEventIdAndCustomerId(eventId, customerId)) {
@@ -92,7 +90,7 @@ public class OrderEventConsumer {
 
             transactionTemplate.execute(status -> {
                 projectionHandler.handle(event);
-                
+
                 ProcessedEventEntity processed = new ProcessedEventEntity();
                 processed.setEventId(eventId);
                 processed.setAggregateId(event.getAggregateId());
@@ -100,14 +98,17 @@ public class OrderEventConsumer {
                 processed.setCustomerId(customerId);
                 processed.setProcessedAt(Instant.now());
                 processedEventRepository.save(processed);
-                
-                log.info("Event processed eventId={} eventType={} aggregateId={} customerId={}", 
+
+                log.info("Event processed eventId={} eventType={} aggregateId={} customerId={}",
                         eventId, event.getEventType(), event.getAggregateId(), customerId);
                 return null;
             });
-            
+
             businessMetrics.incrementEventsProcessed();
             acknowledgment.acknowledge();
+        } catch (Exception e) {
+            log.error("Failed to process event payload={} error={}", payload, e.getMessage(), e);
+            throw e;
         } finally {
             CorrelationIdContext.clear();
         }

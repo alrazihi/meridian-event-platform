@@ -49,11 +49,10 @@ public class EventProcessingHealthIndicator implements HealthIndicator {
 
     private boolean checkKafkaConnectivity() {
         try {
-            // Quick metadata fetch to verify connectivity
-            kafkaTemplate.getDefaultTopic().ifPresentOrElse(
-                topic -> {},
-                () -> kafkaTemplate.execute(operations -> operations.partitionsFor("order.events"))
-            );
+            String defaultTopic = kafkaTemplate.getDefaultTopic();
+            if (defaultTopic == null || defaultTopic.isEmpty()) {
+                kafkaTemplate.execute(operations -> operations.partitionsFor("order.events"));
+            }
             return true;
         } catch (Exception e) {
             return false;

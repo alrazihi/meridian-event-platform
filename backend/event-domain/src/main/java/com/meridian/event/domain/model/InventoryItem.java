@@ -10,7 +10,7 @@ public class InventoryItem {
     private final Sku sku;
     private int availableQuantity;
     private int reservedQuantity;
-    private final Instant createdAt;
+    private Instant createdAt;
     private Instant updatedAt;
     private long version;
 
@@ -57,10 +57,10 @@ public class InventoryItem {
 public long getVersion() { return version; }
 
     // Package-private setters for persistence reconstruction
-    void setAvailableQuantity(int availableQuantity) { this.availableQuantity = availableQuantity; }
-    void setReservedQuantity(int reservedQuantity) { this.reservedQuantity = reservedQuantity; }
-    void setVersion(long version) { this.version = version; }
-    void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-    void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public void setAvailableQuantity(int availableQuantity) { this.availableQuantity = availableQuantity; }
+    public void setReservedQuantity(int reservedQuantity) { this.reservedQuantity = reservedQuantity; }
+    public void setVersion(long version) { this.version = version; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }
 

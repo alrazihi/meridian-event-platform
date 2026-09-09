@@ -18,7 +18,7 @@ public class Order {
     private Money total;
     private OrderStatus status;
     private final List<OrderLine> lines;
-    private final Instant createdAt;
+    private Instant createdAt;
     private Instant updatedAt;
     private long version;
 
@@ -79,10 +79,10 @@ public class Order {
 public long getVersion() { return version; }
 
     // Package-private setters for persistence reconstruction
-    void setTotal(Money total) { this.total = total; }
-    void setStatus(OrderStatus status) { this.status = status; }
-    void setVersion(long version) { this.version = version; }
-    void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-    void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public void setTotal(Money total) { this.total = total; }
+    public void setStatus(OrderStatus status) { this.status = status; }
+    public void setVersion(long version) { this.version = version; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }
 
