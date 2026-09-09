@@ -4,6 +4,7 @@ import com.meridian.event.domain.exception.DomainException;
 import com.meridian.event.domain.model.valueobjects.Money;
 import com.meridian.event.domain.model.valueobjects.OrderId;
 import com.meridian.event.domain.model.valueobjects.Sku;
+import com.meridian.event.domain.service.OrderValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;

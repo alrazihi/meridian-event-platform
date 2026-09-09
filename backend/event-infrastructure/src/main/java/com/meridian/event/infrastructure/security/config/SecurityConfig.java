@@ -93,7 +93,7 @@ public class SecurityConfig {
     @Profile("dev | test")
     public JwtDecoder devJwtDecoder() {
         // Dev/test mode: auto-generate a test key pair for local development
-        // This allows tests to work without manual key configuration
+        // WARNING: Never use this profile in production
         try {
             KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
             keyGen.initialize(2048);
@@ -105,10 +105,15 @@ public class SecurityConfig {
     }
 
     @Bean
+    @Profile("!dev & !test")
     public RSAPublicKey rsaPublicKey() {
         String publicKeyPem = System.getenv().getOrDefault("JWT_PUBLIC_KEY", "");
         if (publicKeyPem.isBlank()) {
-            throw new IllegalStateException("JWT_PUBLIC_KEY environment variable not set");
+            throw new IllegalStateException(
+                    "JWT_PUBLIC_KEY environment variable is required in production. " +
+                    "Set it to your RSA public key in PEM format (without header/footer), " +
+                    "or configure SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI."
+            );
         }
         try {
             String publicKeyPEM = publicKeyPem

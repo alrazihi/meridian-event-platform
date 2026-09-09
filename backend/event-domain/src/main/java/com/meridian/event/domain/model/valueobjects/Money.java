@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Objects;
 
-public record Money(BigDecimal value, String currency) {
+public record Money(BigDecimal value, String currency) implements Comparable<Money> {
     public Money {
         Objects.requireNonNull(value, "value cannot be null");
         Objects.requireNonNull(currency, "currency cannot be null");
@@ -26,8 +26,19 @@ public record Money(BigDecimal value, String currency) {
         return new Money(this.value.add(other.value), this.currency);
     }
 
+    public Money subtract(Money other) {
+        validateCurrency(other);
+        return new Money(this.value.subtract(other.value), this.currency);
+    }
+
     public Money multiply(int quantity) {
         return new Money(this.value.multiply(BigDecimal.valueOf(quantity)), this.currency);
+    }
+
+    @Override
+    public int compareTo(Money other) {
+        validateCurrency(other);
+        return this.value.compareTo(other.value);
     }
 
     private void validateCurrency(Money other) {

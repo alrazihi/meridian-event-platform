@@ -108,9 +108,8 @@ class OrderControllerTest {
                 "CONFIRMED",
                 java.time.Instant.now()
         );
-        when(queryOrderStatusUseCase.getOrderStatus("order-123")).thenReturn(
-                com.meridian.event.domain.model.OrderTest.createMockOrder()
-        );
+        when(queryOrderStatusUseCase.getOrderStatus(eq("order-123"), anyString()))
+                .thenReturn(com.meridian.event.domain.model.OrderTest.createMockOrder());
 
         mockMvc.perform(get("/api/v1/orders/order-123"))
                 .andExpect(status().isOk())
@@ -122,9 +121,8 @@ class OrderControllerTest {
     @Test
     @WithMockUser(roles = "REVIEWER")
     void shouldAllowReviewerToGetOrder() throws Exception {
-        when(queryOrderStatusUseCase.getOrderStatus("order-123")).thenReturn(
-                com.meridian.event.domain.model.OrderTest.createMockOrder()
-        );
+        when(queryOrderStatusUseCase.getOrderStatus(eq("order-123"), anyString()))
+                .thenReturn(com.meridian.event.domain.model.OrderTest.createMockOrder());
 
         mockMvc.perform(get("/api/v1/orders/order-123"))
                 .andExpect(status().isOk());
@@ -139,8 +137,8 @@ class OrderControllerTest {
     @Test
     @WithMockUser(roles = "OPERATOR")
     void shouldReturnNotFoundForNonExistentOrder() throws Exception {
-        when(queryOrderStatusUseCase.getOrderStatus("non-existent"))
-                .thenThrow(new IllegalArgumentException("Order not found: non-existent"));
+        when(queryOrderStatusUseCase.getOrderStatus(eq("non-existent"), anyString()))
+                .thenThrow(new IllegalArgumentException("Order not found"));
 
         mockMvc.perform(get("/api/v1/orders/non-existent"))
                 .andExpect(status().isNotFound());

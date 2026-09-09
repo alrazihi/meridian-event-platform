@@ -15,13 +15,11 @@ import com.meridian.event.domain.model.PaymentStatus;
 import com.meridian.event.domain.model.valueobjects.Money;
 import com.meridian.event.domain.model.valueobjects.OrderId;
 import com.meridian.event.domain.model.valueobjects.PaymentId;
-import com.meridian.event.infrastructure.payment.MockPaymentGateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.concurrent.DelegatingSecurityContextExecutor;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,6 +28,7 @@ import java.util.concurrent.Executor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -58,7 +57,7 @@ class PaymentServiceSecurityTest {
     @BeforeEach
     void setUp() {
         MockPaymentGateway mockGateway = new MockPaymentGateway();
-        Executor executor = new DelegatingSecurityContextExecutor(java.util.concurrent.Executors.newSingleThreadExecutor());
+        Executor executor = java.util.concurrent.Executors.newSingleThreadExecutor();
 
         paymentService = new DefaultPaymentService(
                 orderRepository,

@@ -49,7 +49,7 @@ class DefaultOrderServiceIntegrationTest {
                 new OrderLineInput("SKU-2", 1, 25.00)
         );
 
-        Order order = placeOrderUseCase.placeOrder("customer-123", lines);
+        Order order = placeOrderUseCase.placeOrder("customer-123", lines, "customer-123");
 
         assertThat(order.getId()).isNotNull();
         assertThat(order.getCustomerId()).isEqualTo("customer-123");
@@ -57,7 +57,6 @@ class DefaultOrderServiceIntegrationTest {
         assertThat(order.getTotal().value()).isEqualByComparingTo("45.00");
         assertThat(order.getStatus()).isEqualTo(com.meridian.event.domain.model.OrderStatus.CREATED);
 
-        // Verify persistence
         Order persisted = orderRepository.findById(order.getId()).orElseThrow();
         assertThat(persisted.getId()).isEqualTo(order.getId());
         assertThat(persisted.getTotal().value()).isEqualByComparingTo("45.00");
@@ -66,10 +65,10 @@ class DefaultOrderServiceIntegrationTest {
     @Test
     void shouldRejectOrderWithInvalidLines() {
         List<OrderLineInput> lines = List.of(
-                new OrderLineInput("SKU-1", 0, 10.00) // invalid quantity
+                new OrderLineInput("SKU-1", 0, 10.00)
         );
 
-        assertThatThrownBy(() -> placeOrderUseCase.placeOrder("customer-123", lines))
+        assertThatThrownBy(() -> placeOrderUseCase.placeOrder("customer-123", lines, "customer-123"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid quantity");
     }
@@ -77,9 +76,9 @@ class DefaultOrderServiceIntegrationTest {
     @Test
     void shouldQueryOrderStatus() {
         List<OrderLineInput> lines = List.of(new OrderLineInput("SKU-1", 1, 10.00));
-        Order placed = placeOrderUseCase.placeOrder("customer-123", lines);
+        Order placed = placeOrderUseCase.placeOrder("customer-123", lines, "customer-123");
 
-        Order queried = queryOrderStatusUseCase.getOrderStatus(placed.getId().value());
+        Order queried = queryOrderStatusUseCase.getOrderStatus(placed.getId().value(), "customer-123");
 
         assertThat(queried.getId()).isEqualTo(placed.getId());
         assertThat(queried.getCustomerId()).isEqualTo("customer-123");
@@ -90,7 +89,7 @@ class DefaultOrderServiceIntegrationTest {
     void shouldFailToQueryNonExistentOrder() {
         String nonExistentId = UUID.randomUUID().toString();
 
-        assertThatThrownBy(() -> queryOrderStatusUseCase.getOrderStatus(nonExistentId))
+        assertThatThrownBy(() -> queryOrderStatusUseCase.getOrderStatus(nonExistentId, "customer-123"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Order not found");
     }

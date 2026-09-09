@@ -20,12 +20,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -66,13 +68,10 @@ class OrderServiceSecurityTest {
     void shouldAllowCustomerToPlaceOrderForSelf() {
         String customerId = "customer-123";
         String authenticatedCustomerId = "customer-123";
-        OrderLineInput line = new OrderLineInput();
-        line.setSku("SKU-1");
-        line.setQuantity(1);
-        line.setUnitPrice(10.00);
+        OrderLineInput line = new OrderLineInput("SKU-1", 1, 10.00);
 
         Order savedOrder = new Order(OrderId.generate(), customerId, List.of(
-                new OrderLine(Sku.of("SKU-1"), 1, Money.of(new java.math.BigDecimal("10.00"), "USD"))
+                new OrderLine(Sku.of("SKU-1"), 1, Money.of(new BigDecimal("10.00"), "USD"))
         ));
         when(orderRepository.save(any())).thenReturn(savedOrder);
 
@@ -85,10 +84,7 @@ class OrderServiceSecurityTest {
     void shouldDenyCustomerPlacingOrderForAnotherCustomer() {
         String customerId = "customer-456";
         String authenticatedCustomerId = "customer-123";
-        OrderLineInput line = new OrderLineInput();
-        line.setSku("SKU-1");
-        line.setQuantity(1);
-        line.setUnitPrice(10.00);
+        OrderLineInput line = new OrderLineInput("SKU-1", 1, 10.00);
 
         when(authorizationService.canAccessOrder(eq(authenticatedCustomerId), eq(customerId))).thenReturn(false);
 

@@ -1,10 +1,8 @@
 package com.meridian.event.application.service;
 
-import com.meridian.event.infrastructure.observability.BusinessMetrics;
 import com.meridian.event.application.port.outbound.EventPublisher;
 import com.meridian.event.application.port.outbound.NotificationService;
 import com.meridian.event.domain.service.OrderValidator;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -95,16 +93,11 @@ class TestConfig {
 
     @Bean
     public com.meridian.event.application.port.outbound.PaymentGateway paymentGateway() {
-        return new com.meridian.event.infrastructure.payment.MockPaymentGateway();
+        return new MockPaymentGateway();
     }
 
     @Bean
     public com.meridian.event.domain.service.InventoryReserver inventoryReserver() {
         return new com.meridian.event.domain.service.InventoryReserver(java.util.Map.of());
-    }
-
-    @Bean
-    public BusinessMetrics businessMetrics() {
-        return new BusinessMetrics(new SimpleMeterRegistry());
     }
 }

@@ -1,10 +1,13 @@
 package com.meridian.event.application.service;
 
+import com.meridian.event.application.port.inbound.OrderLineInput;
 import com.meridian.event.application.port.inbound.ProcessPaymentUseCase;
 import com.meridian.event.application.port.outbound.PaymentRepository;
+import com.meridian.event.domain.model.Order;
 import com.meridian.event.domain.model.Payment;
 import com.meridian.event.domain.model.PaymentStatus;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -38,9 +41,9 @@ class DefaultPaymentServiceIntegrationTest {
 
     @Test
     void shouldInitiatePaymentAndReturnPending() {
-        Order order = placeOrderUseCase.placeOrder("customer-123", List.of(new OrderLineInput("SKU-1", 1, 100.00)));
+        Order order = placeOrderUseCase.placeOrder("customer-123", List.of(new OrderLineInput("SKU-1", 1, 100.00)), "customer-123");
 
-        Payment payment = processPaymentUseCase.processPayment(order.getId().value(), 100.00, "CREDIT_CARD");
+        Payment payment = processPaymentUseCase.processPayment(order.getId().value(), 100.00, "CREDIT_CARD", "customer-123");
 
         assertThat(payment.getId()).isNotNull();
         assertThat(payment.getOrderId()).isEqualTo(order.getId().value());
@@ -51,9 +54,9 @@ class DefaultPaymentServiceIntegrationTest {
 
     @Test
     void shouldCompletePaymentAsync() throws Exception {
-        Order order = placeOrderUseCase.placeOrder("customer-123", List.of(new OrderLineInput("SKU-1", 1, 100.00)));
+        Order order = placeOrderUseCase.placeOrder("customer-123", List.of(new OrderLineInput("SKU-1", 1, 100.00)), "customer-123");
 
-        Payment pendingPayment = processPaymentUseCase.processPayment(order.getId().value(), 100.00, "CREDIT_CARD");
+        Payment pendingPayment = processPaymentUseCase.processPayment(order.getId().value(), 100.00, "CREDIT_CARD", "customer-123");
         assertThat(pendingPayment.getStatus()).isEqualTo(PaymentStatus.PENDING);
 
         CompletableFuture<Void> future = paymentService.processPaymentAsync(
@@ -68,16 +71,16 @@ class DefaultPaymentServiceIntegrationTest {
 
     @Test
     void shouldFailWhenAmountMismatch() {
-        Order order = placeOrderUseCase.placeOrder("customer-123", List.of(new OrderLineInput("SKU-1", 1, 100.00)));
+        Order order = placeOrderUseCase.placeOrder("customer-123", List.of(new OrderLineInput("SKU-1", 1, 100.00)), "customer-123");
 
-        assertThatThrownBy(() -> processPaymentUseCase.processPayment(order.getId().value(), 50.00, "CREDIT_CARD"))
+        assertThatThrownBy(() -> processPaymentUseCase.processPayment(order.getId().value(), 50.00, "CREDIT_CARD", "customer-123"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("amount mismatch");
     }
 
     @Test
     void shouldFailWhenOrderNotFound() {
-        assertThatThrownBy(() -> processPaymentUseCase.processPayment("non-existent-order", 100.00, "CREDIT_CARD"))
+        assertThatThrownBy(() -> processPaymentUseCase.processPayment("non-existent-order", 100.00, "CREDIT_CARD", "customer-123"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Order not found");
     }

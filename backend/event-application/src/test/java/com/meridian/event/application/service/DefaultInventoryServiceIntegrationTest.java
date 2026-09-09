@@ -5,6 +5,7 @@ import com.meridian.event.application.port.outbound.InventoryItemRepository;
 import com.meridian.event.domain.model.InventoryItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -35,7 +36,7 @@ class DefaultInventoryServiceIntegrationTest {
 
     @Test
     void shouldReserveInventorySuccessfully() {
-        InventoryItem item = reserveInventoryUseCase.reserveInventory("SKU-TEST", 30);
+        InventoryItem item = reserveInventoryUseCase.reserveInventory("SKU-TEST", 30, "tenant-123");
 
         assertThat(item.getSku().value()).isEqualTo("SKU-TEST");
         assertThat(item.getAvailableQuantity()).isEqualTo(70);
@@ -44,25 +45,25 @@ class DefaultInventoryServiceIntegrationTest {
 
     @Test
     void shouldFailWhenSkuNotFound() {
-        assertThatThrownBy(() -> reserveInventoryUseCase.reserveInventory("NON-EXISTENT", 10))
+        assertThatThrownBy(() -> reserveInventoryUseCase.reserveInventory("NON-EXISTENT", 10, "tenant-123"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Inventory item not found");
     }
 
     @Test
     void shouldFailWhenInsufficientInventory() {
-        assertThatThrownBy(() -> reserveInventoryUseCase.reserveInventory("SKU-TEST", 150))
+        assertThatThrownBy(() -> reserveInventoryUseCase.reserveInventory("SKU-TEST", 150, "tenant-123"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Insufficient inventory");
     }
 
     @Test
     void shouldFailWhenQuantityZeroOrNegative() {
-        assertThatThrownBy(() -> reserveInventoryUseCase.reserveInventory("SKU-TEST", 0))
+        assertThatThrownBy(() -> reserveInventoryUseCase.reserveInventory("SKU-TEST", 0, "tenant-123"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Reserve quantity must be positive");
 
-        assertThatThrownBy(() -> reserveInventoryUseCase.reserveInventory("SKU-TEST", -5))
+        assertThatThrownBy(() -> reserveInventoryUseCase.reserveInventory("SKU-TEST", -5, "tenant-123"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Reserve quantity must be positive");
     }
