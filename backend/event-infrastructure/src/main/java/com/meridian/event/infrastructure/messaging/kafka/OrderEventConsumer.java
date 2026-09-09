@@ -3,6 +3,9 @@ package com.meridian.event.infrastructure.messaging.kafka;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.meridian.event.domain.model.DomainEvent;
 import com.meridian.event.domain.model.OrderConfirmedEvent;
+import com.meridian.event.infrastructure.observability.BusinessMetrics;
+import com.meridian.event.infrastructure.observability.CorrelationIdContext;
+import com.meridian.event.infrastructure.observability.KafkaCorrelationIdConsumerInterceptor;
 import com.meridian.event.infrastructure.persistence.jpa.ProcessedEventEntity;
 import com.meridian.event.infrastructure.persistence.repository.ProcessedEventRepository;
 import com.meridian.event.infrastructure.projection.OrderProjectionHandler;
@@ -25,7 +28,7 @@ import java.time.Instant;
 @Component
 public class OrderEventConsumer {
 
-    private static final Logger log = LoggerFactory.getLogger(OrderEventConsumer.class);
+    private static final Logger log = LoggerFactory.getLogger("EVENT_PROCESSING");
     private static final String DLQ_TOPIC = "dlq.order.events";
     private static final int MAX_RETRIES = 3;
 
@@ -34,17 +37,20 @@ public class OrderEventConsumer {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final OrderProjectionHandler projectionHandler;
     private final TransactionTemplate transactionTemplate;
+    private final BusinessMetrics businessMetrics;
 
     public OrderEventConsumer(ObjectMapper objectMapper,
                                ProcessedEventRepository processedEventRepository,
                                KafkaTemplate<String, String> kafkaTemplate,
                                OrderProjectionHandler projectionHandler,
-                               TransactionTemplate transactionTemplate) {
+                               TransactionTemplate transactionTemplate,
+                               BusinessMetrics businessMetrics) {
         this.objectMapper = objectMapper;
         this.processedEventRepository = processedEventRepository;
         this.kafkaTemplate = kafkaTemplate;
         this.projectionHandler = projectionHandler;
         this.transactionTemplate = transactionTemplate;
+        this.businessMetrics = businessMetrics;
         
         objectMapper.registerModule(new com.fasterxml.jackson.databind.module.SimpleModule()
                 .addDeserializer(DomainEvent.class, new DomainEventDeserializer()));
@@ -61,36 +67,50 @@ public class OrderEventConsumer {
             @Header(KafkaHeaders.RECEIVED_KEY) String key,
             @Header(KafkaHeaders.OFFSET) long offset,
             @Header(value = KafkaHeaders.RECEIVED_TIMESTAMP, required = false) Long timestamp,
+            @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
             Acknowledgment acknowledgment) {
         
-        DomainEvent event = objectMapper.readValue(payload, DomainEvent.class);
-        String eventId = event.getEventId();
+        try {
+            DomainEvent event = objectMapper.readValue(payload, DomainEvent.class);
+            String eventId = event.getEventId();
 
-        // Extract customer ID for tenant isolation of idempotency keys
-        String customerId = extractCustomerId(event);
+            // Set correlation context from Kafka headers for structured logging
+            CorrelationIdContext.setCorrelationId(event.getCorrelationId());
+            CorrelationIdContext.setTraceId(event.getCorrelationId()); // Use correlationId as traceId if no separate traceId
+            
+            log.info("Received event eventId={} eventType={} aggregateId={} correlationId={} partition={} offset={}",
+                    eventId, event.getEventType(), event.getAggregateId(), event.getCorrelationId(), partition, offset);
 
-        if (processedEventRepository.existsByEventIdAndCustomerId(eventId, customerId)) {
-            log.debug("Duplicate event {} for customer {} skipped", eventId, customerId);
+            // Extract customer ID for tenant isolation of idempotency keys
+            String customerId = extractCustomerId(event);
+
+            if (processedEventRepository.existsByEventIdAndCustomerId(eventId, customerId)) {
+                log.info("Duplicate event skipped eventId={} customerId={}", eventId, customerId);
+                acknowledgment.acknowledge();
+                return;
+            }
+
+            transactionTemplate.execute(status -> {
+                projectionHandler.handle(event);
+                
+                ProcessedEventEntity processed = new ProcessedEventEntity();
+                processed.setEventId(eventId);
+                processed.setAggregateId(event.getAggregateId());
+                processed.setEventType(event.getEventType());
+                processed.setCustomerId(customerId);
+                processed.setProcessedAt(Instant.now());
+                processedEventRepository.save(processed);
+                
+                log.info("Event processed eventId={} eventType={} aggregateId={} customerId={}", 
+                        eventId, event.getEventType(), event.getAggregateId(), customerId);
+                return null;
+            });
+            
+            businessMetrics.incrementEventsProcessed();
             acknowledgment.acknowledge();
-            return;
+        } finally {
+            CorrelationIdContext.clear();
         }
-
-        transactionTemplate.execute(status -> {
-            projectionHandler.handle(event);
-            
-            ProcessedEventEntity processed = new ProcessedEventEntity();
-            processed.setEventId(eventId);
-            processed.setAggregateId(event.getAggregateId());
-            processed.setEventType(event.getEventType());
-            processed.setCustomerId(customerId);
-            processed.setProcessedAt(Instant.now());
-            processedEventRepository.save(processed);
-            
-            log.info("Processed event {} for order {} at offset {}", event.getEventType(), event.getAggregateId(), offset);
-            return null;
-        });
-        
-        acknowledgment.acknowledge();
     }
 
     private String extractCustomerId(DomainEvent event) {
@@ -104,7 +124,7 @@ public class OrderEventConsumer {
 
     @Recover
     public void recover(Exception ex, String payload, String key, long offset, Long timestamp, Acknowledgment acknowledgment) {
-        log.error("Max retries exhausted for event at offset {}, sending to DLQ", offset, ex);
+        log.error("Max retries exhausted for event at offset {}, sending to DLQ error={}", offset, ex.getMessage(), ex);
         
         try {
             DomainEvent event = objectMapper.readValue(payload, DomainEvent.class);
@@ -115,7 +135,10 @@ public class OrderEventConsumer {
             );
             
             kafkaTemplate.send(DLQ_TOPIC, key, dlqPayload).get();
-            log.info("Sent failed event to DLQ topic: {}", DLQ_TOPIC);
+            log.info("Sent failed event to DLQ topic={} eventId={}", DLQ_TOPIC, event.getEventId());
+            
+            businessMetrics.incrementEventsFailed();
+            businessMetrics.incrementEventsDlq();
         } catch (Exception dlqEx) {
             log.error("Failed to send event to DLQ", dlqEx);
         }

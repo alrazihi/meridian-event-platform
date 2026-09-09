@@ -1,8 +1,10 @@
 package com.meridian.event.infrastructure.messaging.kafka;
 
+import com.meridian.event.infrastructure.observability.BusinessMetrics;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.meridian.event.infrastructure.persistence.jpa.OutboxEventEntity;
 import com.meridian.event.infrastructure.persistence.repository.OutboxEventRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -19,6 +21,11 @@ class OutboxTestConfig {
     }
 
     @Bean
+    public BusinessMetrics businessMetrics() {
+        return new BusinessMetrics(new SimpleMeterRegistry());
+    }
+
+    @Bean
     public TransactionTemplate transactionTemplate(PlatformTransactionManager transactionManager) {
         return new TransactionTemplate(transactionManager);
     }
@@ -27,7 +34,8 @@ class OutboxTestConfig {
     public OutboxEventPublisher outboxEventPublisher(
             OutboxEventRepository outboxRepository,
             KafkaTemplate<String, String> kafkaTemplate,
-            ObjectMapper objectMapper) {
-        return new OutboxEventPublisher(outboxRepository, kafkaTemplate, objectMapper);
+            ObjectMapper objectMapper,
+            BusinessMetrics businessMetrics) {
+        return new OutboxEventPublisher(outboxRepository, kafkaTemplate, objectMapper, businessMetrics);
     }
 }

@@ -15,6 +15,10 @@ import com.meridian.event.domain.model.valueobjects.OrderId;
 import com.meridian.event.domain.model.valueobjects.Sku;
 import com.meridian.event.domain.model.OrderConfirmedEvent;
 import com.meridian.event.domain.service.OrderValidator;
+import com.meridian.event.infrastructure.observability.BusinessMetrics;
+import com.meridian.event.infrastructure.observability.CorrelationIdContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,12 +31,15 @@ import java.util.Optional;
 @Service
 public class DefaultOrderService implements PlaceOrderUseCase, QueryOrderStatusUseCase {
 
+    private static final Logger log = LoggerFactory.getLogger("WORKFLOW");
+
     private final OrderRepository orderRepository;
     private final EventPublisher eventPublisher;
     private final NotificationService notificationService;
     private final ProcessPaymentUseCase processPaymentUseCase;
     private final ReserveInventoryUseCase reserveInventoryUseCase;
     private final OrderValidator orderValidator;
+    private final BusinessMetrics businessMetrics;
 
     public DefaultOrderService(
             OrderRepository orderRepository,
@@ -40,20 +47,26 @@ public class DefaultOrderService implements PlaceOrderUseCase, QueryOrderStatusU
             NotificationService notificationService,
             ProcessPaymentUseCase processPaymentUseCase,
             ReserveInventoryUseCase reserveInventoryUseCase,
-            OrderValidator orderValidator) {
+            OrderValidator orderValidator,
+            BusinessMetrics businessMetrics) {
         this.orderRepository = orderRepository;
         this.eventPublisher = eventPublisher;
         this.notificationService = notificationService;
         this.processPaymentUseCase = processPaymentUseCase;
         this.reserveInventoryUseCase = reserveInventoryUseCase;
         this.orderValidator = orderValidator;
+        this.businessMetrics = businessMetrics;
     }
 
     @Override
     @Transactional
     public Order placeOrder(String customerId, List<OrderLineInput> lines, String authenticatedCustomerId) {
+        String correlationId = CorrelationIdContext.getCorrelationId();
+        
         // Regular users can only place orders for themselves; admins can place for others
         if (!isAdmin() && !customerId.equals(authenticatedCustomerId)) {
+            log.warn("Order placement authorization denied customerId={} authenticatedCustomerId={} correlationId={}",
+                    customerId, authenticatedCustomerId, correlationId);
             throw new AccessDeniedException("Cannot place order for another customer");
         }
 
@@ -66,6 +79,8 @@ public class DefaultOrderService implements PlaceOrderUseCase, QueryOrderStatusU
 
         OrderValidator.ValidationResult validationResult = orderValidator.validate(order);
         if (!validationResult.isValid()) {
+            log.warn("Order validation failed customerId={} error={} correlationId={}",
+                    customerId, validationResult.errorMessage(), correlationId);
             throw new IllegalArgumentException(validationResult.errorMessage());
         }
 
@@ -79,7 +94,13 @@ public class DefaultOrderService implements PlaceOrderUseCase, QueryOrderStatusU
         );
         eventPublisher.publish(event);
 
+        businessMetrics.incrementOrdersPlaced();
+        businessMetrics.incrementEventsPublished();
+
         notificationService.notifyOrderConfirmed(savedOrder.getId().value(), savedOrder.getCustomerId());
+
+        log.info("Order placed orderId={} customerId={} total={} correlationId={}",
+                savedOrder.getId().value(), customerId, savedOrder.getTotal().value(), correlationId);
 
         return savedOrder;
     }

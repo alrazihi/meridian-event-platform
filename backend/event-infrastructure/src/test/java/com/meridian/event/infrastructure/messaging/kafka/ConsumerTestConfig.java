@@ -1,9 +1,11 @@
 package com.meridian.event.infrastructure.messaging.kafka;
 
+import com.meridian.event.infrastructure.observability.BusinessMetrics;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.meridian.event.infrastructure.persistence.jpa.ProcessedEventEntity;
 import com.meridian.event.infrastructure.persistence.repository.ProcessedEventRepository;
 import com.meridian.event.infrastructure.projection.OrderProjectionHandler;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -19,18 +21,25 @@ class ConsumerTestConfig {
     }
 
     @Bean
+    public BusinessMetrics businessMetrics() {
+        return new BusinessMetrics(new SimpleMeterRegistry());
+    }
+
+    @Bean
     public OrderEventConsumer orderEventConsumer(
             ObjectMapper objectMapper,
             ProcessedEventRepository processedEventRepository,
             KafkaTemplate<String, String> kafkaTemplate,
             OrderProjectionHandler projectionHandler,
-            org.springframework.transaction.support.TransactionTemplate transactionTemplate) {
+            org.springframework.transaction.support.TransactionTemplate transactionTemplate,
+            BusinessMetrics businessMetrics) {
         return new OrderEventConsumer(
                 objectMapper,
                 processedEventRepository,
                 kafkaTemplate,
                 projectionHandler,
-                transactionTemplate
+                transactionTemplate,
+                businessMetrics
         );
     }
 

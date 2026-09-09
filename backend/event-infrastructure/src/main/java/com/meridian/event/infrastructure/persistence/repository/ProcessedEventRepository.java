@@ -18,4 +18,7 @@ public interface ProcessedEventRepository extends JpaRepository<ProcessedEventEn
 
     @Query("SELECT e FROM ProcessedEventEntity e WHERE e.processedAt < :cutoff")
     List<ProcessedEventEntity> findOldEvents(Instant cutoff, Pageable pageable);
+
+    @Query("SELECT count(e) FROM ProcessedEventEntity e WHERE e.processedAt >= :cutoff")
+    long countRecentEvents(Instant cutoff);
 }

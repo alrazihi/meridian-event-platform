@@ -23,4 +23,10 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEventEntity, 
     List<OutboxEventEntity> findOldSentEvents(Instant cutoff, Pageable pageable);
 
     long countBySentAtIsNull();
+
+    @Query("SELECT count(e) FROM OutboxEventEntity e WHERE e.sentAt IS NULL AND e.createdAt < :cutoff")
+    long countOldUnsentEvents(Instant cutoff);
+
+    @Query("SELECT count(e) FROM OutboxEventEntity e WHERE e.sentAt IS NULL AND e.retryCount > 0")
+    long countRetryingEvents();
 }

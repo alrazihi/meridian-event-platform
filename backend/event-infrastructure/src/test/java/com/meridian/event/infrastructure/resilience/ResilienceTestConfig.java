@@ -1,5 +1,6 @@
 package com.meridian.event.infrastructure.resilience;
 
+import com.meridian.event.infrastructure.observability.BusinessMetrics;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.meridian.event.domain.model.DomainEvent;
 import com.meridian.event.domain.model.OrderConfirmedEvent;
@@ -11,6 +12,7 @@ import com.meridian.event.infrastructure.persistence.jpa.ProcessedEventEntity;
 import com.meridian.event.infrastructure.persistence.repository.OutboxEventRepository;
 import com.meridian.event.infrastructure.persistence.repository.ProcessedEventRepository;
 import com.meridian.event.infrastructure.projection.OrderProjectionHandler;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -138,6 +140,11 @@ class ResilienceTestConfig {
     }
 
     @Bean
+    public BusinessMetrics businessMetrics() {
+        return new BusinessMetrics(new SimpleMeterRegistry());
+    }
+
+    @Bean
     public OrderProjectionHandler orderProjectionHandler(
             com.meridian.event.infrastructure.persistence.repository.OrderProjectionRepository projectionRepository) {
         return new OrderProjectionHandler(projectionRepository);
@@ -154,13 +161,15 @@ class ResilienceTestConfig {
             ProcessedEventRepository processedEventRepository,
             KafkaTemplate<String, String> kafkaTemplate,
             OrderProjectionHandler projectionHandler,
-            TransactionTemplate transactionTemplate) {
+            TransactionTemplate transactionTemplate,
+            BusinessMetrics businessMetrics) {
         return new OrderEventConsumer(
                 objectMapper,
                 processedEventRepository,
                 kafkaTemplate,
                 projectionHandler,
-                transactionTemplate
+                transactionTemplate,
+                businessMetrics
         );
     }
 
@@ -168,8 +177,9 @@ class ResilienceTestConfig {
     public OutboxEventPublisher outboxEventPublisher(
             OutboxEventRepository outboxRepository,
             KafkaTemplate<String, String> kafkaTemplate,
-            ObjectMapper objectMapper) {
-        return new OutboxEventPublisher(outboxRepository, kafkaTemplate, objectMapper);
+            ObjectMapper objectMapper,
+            BusinessMetrics businessMetrics) {
+        return new OutboxEventPublisher(outboxRepository, kafkaTemplate, objectMapper, businessMetrics);
     }
 
     @Bean
